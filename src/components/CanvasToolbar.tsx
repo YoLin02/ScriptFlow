@@ -1,10 +1,13 @@
 import { BookOpen, Film, FolderOpen, Image, Layers, Lightbulb, PlusCircle, Table, Trash2 } from 'lucide-react';
-import { NodeType } from '../types';
+import { AutoSaveStatus, NodeType } from '../types';
 
 interface CanvasToolbarProps {
   isDrawerOpen: boolean;
   isMediaLibraryOpen: boolean;
   mediaAssetCount: number;
+  saveStatus: AutoSaveStatus;
+  lastSavedAt: number | null;
+  saveError: string | null;
   onToggleMediaLibrary: () => void;
   onToggleDrawer: () => void;
   onAddNode: (type: NodeType) => void;
@@ -17,6 +20,9 @@ export default function CanvasToolbar({
   isDrawerOpen,
   isMediaLibraryOpen,
   mediaAssetCount,
+  saveStatus,
+  lastSavedAt,
+  saveError,
   onToggleMediaLibrary,
   onToggleDrawer,
   onAddNode,
@@ -89,6 +95,8 @@ export default function CanvasToolbar({
           </button>
         </div>
       )}
+
+      {!isDrawerOpen && <SaveStatusText status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />}
     </div>
   );
 }
@@ -102,5 +110,30 @@ function ToolboxButton({ icon, label, onClick }: { icon: React.ReactNode; label:
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function SaveStatusText({ status, lastSavedAt, error }: { status: AutoSaveStatus; lastSavedAt: number | null; error: string | null }) {
+  const isVisible = !!lastSavedAt || status === 'pending' || status === 'saving' || status === 'error';
+  if (!isVisible) return null;
+
+  const savedTime = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : '--:--';
+
+  const text = status === 'error'
+    ? `保存失败：${error || '请稍后重试'}`
+    : status === 'saving'
+      ? '正在保存'
+      : status === 'pending'
+        ? '准备保存'
+        : `最近保存 ${savedTime}`;
+
+  return (
+    <div className={`absolute right-0 top-[36px] z-20 text-[10px] leading-none font-medium text-right whitespace-nowrap animate-in fade-in slide-in-from-top-1 ${
+      status === 'error' ? 'text-red-500' : 'text-neutral-400'
+    }`}>
+      {text}
+    </div>
   );
 }

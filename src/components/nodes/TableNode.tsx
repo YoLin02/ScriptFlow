@@ -2,59 +2,61 @@ import React, { memo, useContext, useEffect, useState } from 'react';
 import { Plus, Table, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-export const TableNode = memo(({ id, data, selected }: { id: string; data: any; selected?: boolean }) => {
-  const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
-  const [titleVal, setTitleVal] = useState(data.title || '自定义表格');
+import type { TableCanvasNodeData, TableNodeDataValue } from '../../types';
 
-  const getInitialTable = () => {
-    try {
-      if (data.content && data.content.trim().startsWith('{')) {
-        return JSON.parse(data.content);
-      }
-    } catch (e) {
-      console.warn('Failed to parse table content JSON', e);
-    }
-    return {
-      headers: ['姓名', '岗位', '进度'],
-      rows: [
-        ['张三', '开发', '90%'],
-        ['李四', '设计', '60%'],
-      ],
-    };
+const DEFAULT_TABLE_DATA: TableNodeDataValue = {
+  headers: ['姓名', '岗位', '进度'],
+  rows: [
+    ['张三', '开发', '90%'],
+    ['李四', '设计', '60%'],
+  ],
+};
+
+function normalizeTableData(value: unknown): TableNodeDataValue | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<TableNodeDataValue>;
+  if (!Array.isArray(candidate.headers) || !Array.isArray(candidate.rows)) return null;
+
+  return {
+    headers: candidate.headers.map((header) => String(header)),
+    rows: candidate.rows.map((row) => Array.isArray(row) ? row.map((cell) => String(cell)) : []),
   };
+}
 
-  const [table, setTable] = useState(getInitialTable);
+function getTableDataFromNode(data: TableCanvasNodeData): TableNodeDataValue {
+  const structured = normalizeTableData(data.tableData);
+  if (structured) return structured;
+
+  try {
+    if (data.content && data.content.trim().startsWith('{')) {
+      const legacy = normalizeTableData(JSON.parse(data.content));
+      if (legacy) return legacy;
+    }
+  } catch (e) {
+    console.warn('Failed to parse table content JSON', e);
+  }
+
+  return DEFAULT_TABLE_DATA;
+}
+
+export const TableNode = memo(({ id, data, selected }: { id: string; data: TableCanvasNodeData; selected?: boolean }) => {
+  const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
+  const [titleVal, setTitleVal] = useState(data.title || '自定义表格');
+  const [table, setTable] = useState<TableNodeDataValue>(() => getTableDataFromNode(data));
 
   useEffect(() => {
-    try {
-      if (data.content && data.content.trim().startsWith('{')) {
-        const parsed = JSON.parse(data.content);
-        if (JSON.stringify(parsed) !== JSON.stringify(table)) {
-          setTable(parsed);
-        }
-      } else if (!data.content) {
-        // Fallback or initialization
-        const defaults = {
-          headers: ['姓名', '岗位', '进度'],
-          rows: [
-            ['张三', '开发', '90%'],
-            ['李四', '设计', '60%'],
-          ],
-        };
-        setTable(defaults);
-      }
-    } catch (e) {}
-  }, [data.content]);
+    const nextTable = getTableDataFromNode(data);
+    if (JSON.stringify(nextTable) !== JSON.stringify(table)) {
+      setTable(nextTable);
+    }
+  }, [data.tableData, data.content]);
 
   useEffect(() => {
     setTitleVal(data.title || '自定义表格');
   }, [data.title]);
 
   const saveTableData = (updatedTable: typeof table, updatedTitle = titleVal) => {
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, JSON.stringify(updatedTable), updatedTitle);
-    }
+    onUpdateContent?.(id, '', updatedTitle, undefined, undefined, { tableData: updatedTable });
   };
 
   const updateHeaderCell = (colIdx: number, value: string) => {
@@ -93,7 +95,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: any; 
     if (table.rows.length <= 1) return;
     const nextTable = {
       ...table,
-      rows: table.rows.filter((_: any, idx: number) => idx !== rIdx),
+      rows: table.rows.filter((_, idx) => idx !== rIdx),
     };
     setTable(nextTable);
     saveTableData(nextTable);
@@ -112,26 +114,20 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: any; 
   const deleteColumn = (cIdx: number) => {
     if (table.headers.length <= 1) return;
     const nextTable = {
-      headers: table.headers.filter((_: any, idx: number) => idx !== cIdx),
-      rows: table.rows.map((row: string[]) => row.filter((_: any, idx: number) => idx !== cIdx)),
+      headers: table.headers.filter((_, idx) => idx !== cIdx),
+      rows: table.rows.map((row: string[]) => row.filter((_, idx) => idx !== cIdx)),
     };
     setTable(nextTable);
     saveTableData(nextTable);
   };
 
   const handleTitleBlur = () => {
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, JSON.stringify(table), titleVal);
-    }
+    onUpdateContent?.(id, '', titleVal, undefined, undefined, { tableData: table });
   };
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const deleteFn = onDeleteNode || data.onDeleteNode;
-    if (deleteFn) {
-      deleteFn(id);
-    }
+    onDeleteNode?.(id);
   };
 
   return (

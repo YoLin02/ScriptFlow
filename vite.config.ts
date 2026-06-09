@@ -1,11 +1,23 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs';
 import path from 'path';
 import {defineConfig} from 'vite';
+
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version?: string };
+
+function getDisplayVersion() {
+  const githubTag = process.env.GITHUB_REF_TYPE === 'tag' ? process.env.GITHUB_REF_NAME : undefined;
+  const rawVersion = githubTag || packageJson.version || '0.0.0';
+  return rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`;
+}
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      __APP_VERSION__: JSON.stringify(getDisplayVersion()),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

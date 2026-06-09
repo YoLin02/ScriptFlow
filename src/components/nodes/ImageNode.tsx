@@ -2,7 +2,9 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, Image as ImageIcon, Plus, Trash2, Upload } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; selected?: boolean }) => {
+import type { ImageCanvasNodeData } from '../../types';
+
+export const ImageNode = memo(({ id, data, selected }: { id: string; data: ImageCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
   const isEditing = editingId === id;
   const setIsEditing = (val: boolean) => {
@@ -29,10 +31,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; 
 
   const onSave = () => {
     setIsEditing(false);
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, data.content, titleVal, imageUrl, caption);
-    }
+    onUpdateContent?.(id, data.content, titleVal, imageUrl, caption);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,10 +44,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; 
         setImageUrl(base64String);
         setTitleVal(nameWithoutExtension);
         setCaption(nameWithoutExtension);
-        const updateFn = onUpdateContent || data.onUpdateContent;
-        if (updateFn) {
-          updateFn(id, data.content, nameWithoutExtension, base64String, nameWithoutExtension);
-        }
+        onUpdateContent?.(id, data.content, nameWithoutExtension, base64String, nameWithoutExtension);
       };
       reader.readAsDataURL(file);
     }
@@ -59,19 +55,13 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; 
     if (tempUrl.trim()) {
       setImageUrl(tempUrl.trim());
       setIsUrlInput(false);
-      const updateFn = onUpdateContent || data.onUpdateContent;
-      if (updateFn) {
-        updateFn(id, data.content, titleVal, tempUrl.trim(), caption);
-      }
+      onUpdateContent?.(id, data.content, titleVal, tempUrl.trim(), caption);
     }
   };
 
   const handleCaptionChange = (newCaption: string) => {
     setCaption(newCaption);
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, data.content, titleVal, imageUrl, newCaption);
-    }
+    onUpdateContent?.(id, data.content, titleVal, imageUrl, newCaption);
   };
 
   // Automate saving on dismiss of edit mode
@@ -79,13 +69,10 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; 
   useEffect(() => {
     const active = editingId === id;
     if (wasEditing.current && !active) {
-      const updateFn = onUpdateContent || data.onUpdateContent;
-      if (updateFn) {
-        updateFn(id, data.content, titleVal, imageUrl, caption);
-      }
+      onUpdateContent?.(id, data.content, titleVal, imageUrl, caption);
     }
     wasEditing.current = active;
-  }, [editingId, id, data.content, titleVal, imageUrl, caption, onUpdateContent, data.onUpdateContent]);
+  }, [editingId, id, data.content, titleVal, imageUrl, caption, onUpdateContent]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -106,10 +93,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: any; 
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const deleteFn = onDeleteNode || data.onDeleteNode;
-    if (deleteFn) {
-      deleteFn(id);
-    }
+    onDeleteNode?.(id);
   };
 
   return (

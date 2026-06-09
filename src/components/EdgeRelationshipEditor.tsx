@@ -1,6 +1,7 @@
 import { Edge } from '@xyflow/react';
 import { Trash2 } from 'lucide-react';
 import { DEFAULT_RELATION_TAGS } from './flowCanvasUtils';
+import { useFeedback } from './feedback/FeedbackProvider';
 
 interface EdgeRelationshipEditorProps {
   selectedEdge: Edge | null;
@@ -23,6 +24,8 @@ export default function EdgeRelationshipEditor({
   onDelete,
   onClose,
 }: EdgeRelationshipEditorProps) {
+  const { confirm: askConfirm } = useFeedback();
+
   if (!selectedEdge) return null;
 
   return (
@@ -45,8 +48,15 @@ export default function EdgeRelationshipEditor({
           <span className="text-[11px] font-medium text-neutral-400">选择快捷标签：</span>
           {JSON.stringify(shortcutTags) !== JSON.stringify(DEFAULT_RELATION_TAGS) && (
             <button
-              onClick={() => {
-                if (confirm('是否重置回默认标签库？')) {
+              onClick={async () => {
+                const confirmed = await askConfirm({
+                  title: '重置标签库',
+                  message: '是否将快捷标签恢复为默认标签库？',
+                  confirmText: '重置',
+                  cancelText: '取消',
+                  destructive: true,
+                });
+                if (confirmed) {
                   onShortcutTagsChange(DEFAULT_RELATION_TAGS);
                 }
               }}

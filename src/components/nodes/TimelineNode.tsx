@@ -2,52 +2,56 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Clock, Plus, Trash2, X } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
-export interface TimelineTick {
-  id: string;
-  time: string;
-  percent: number;
-}
+import type { TimelineCanvasNodeData, TimelineTrackDataValue } from '../../types';
+export type { TimelineTick, TimelineTrackDataValue as TimelineTrackDataState } from '../../types';
 
-export interface TimelineTrackDataState {
-  ticks: TimelineTick[];
-  width: number;
-  activeTickId: string | null;
-  fontSize?: number;
-}
+const DEFAULT_TIMELINE_DATA: TimelineTrackDataValue = {
+  ticks: [
+    { id: 'tick-0', time: '00:00', percent: 10 },
+    { id: 'tick-1', time: '10:00', percent: 50 },
+    { id: 'tick-2', time: '20:00', percent: 90 },
+  ],
+  width: 750,
+  activeTickId: null,
+  fontSize: 12,
+};
 
-export const TimelineNode = memo(({ id, data, selected }: { id: string; data: any; selected?: boolean }) => {
-  const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
+function normalizeTimelineData(value: unknown): TimelineTrackDataValue | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<TimelineTrackDataValue>;
+  if (!Array.isArray(candidate.ticks)) return null;
 
-  const getInitialTimeline = (): TimelineTrackDataState => {
-    try {
-      if (data.content && data.content.trim().startsWith('{')) {
-        const parsed = JSON.parse(data.content);
-        if (parsed.ticks && Array.isArray(parsed.ticks)) {
-          return {
-            ticks: parsed.ticks,
-            width: parsed.width || 500,
-            activeTickId: parsed.activeTickId || null,
-            fontSize: parsed.fontSize || 12,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse timeline content JSON', e);
-    }
-    // Default initial ticks
-    return {
-      ticks: [
-        { id: 'tick-0', time: '00:00', percent: 10 },
-        { id: 'tick-1', time: '10:00', percent: 50 },
-        { id: 'tick-2', time: '20:00', percent: 90 },
-      ],
-      width: 750,
-      activeTickId: null,
-      fontSize: 12,
-    };
+  return {
+    ticks: candidate.ticks.map((tick, index) => ({
+      id: String(tick.id || `tick-${index}`),
+      time: String(tick.time || '00:00'),
+      percent: typeof tick.percent === 'number' ? tick.percent : Number(tick.percent) || 50,
+    })),
+    width: typeof candidate.width === 'number' ? candidate.width : 750,
+    activeTickId: candidate.activeTickId ? String(candidate.activeTickId) : null,
+    fontSize: typeof candidate.fontSize === 'number' ? candidate.fontSize : 12,
   };
+}
 
-  const [state, setState] = useState<TimelineTrackDataState>(getInitialTimeline);
+function getTimelineDataFromNode(data: TimelineCanvasNodeData): TimelineTrackDataValue {
+  const structured = normalizeTimelineData(data.timelineData);
+  if (structured) return structured;
+
+  try {
+    if (data.content && data.content.trim().startsWith('{')) {
+      const legacy = normalizeTimelineData(JSON.parse(data.content));
+      if (legacy) return legacy;
+    }
+  } catch (e) {
+    console.warn('Failed to parse timeline content JSON', e);
+  }
+
+  return DEFAULT_TIMELINE_DATA;
+}
+
+export const TimelineNode = memo(({ id, data, selected }: { id: string; data: TimelineCanvasNodeData; selected?: boolean }) => {
+  const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
+  const [state, setState] = useState<TimelineTrackDataValue>(() => getTimelineDataFromNode(data));
   const [clickX, setClickX] = useState<number | null>(null);
 
   // Reset click offset when node is deselected
@@ -65,29 +69,11 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: an
 
   // Sync state if outer representation changes safely
   useEffect(() => {
-    try {
-      if (data.content && data.content.trim().startsWith('{')) {
-        const parsed = JSON.parse(data.content);
-        if (parsed.ticks && Array.isArray(parsed.ticks)) {
-          const contentTicksStr = JSON.stringify(parsed.ticks);
-          const stateTicksStr = JSON.stringify(stateRef.current.ticks);
-          const hasChanged = contentTicksStr !== stateTicksStr ||
-            (parsed.width || 500) !== stateRef.current.width ||
-            (parsed.activeTickId || null) !== stateRef.current.activeTickId ||
-            (parsed.fontSize || 12) !== stateRef.current.fontSize;
-          
-          if (hasChanged) {
-            setState({
-              ticks: parsed.ticks,
-              width: parsed.width || 500,
-              activeTickId: parsed.activeTickId || null,
-              fontSize: parsed.fontSize || 12,
-            });
-          }
-        }
-      }
-    } catch (e) {}
-  }, [data.content]);
+    const nextState = getTimelineDataFromNode(data);
+    if (JSON.stringify(nextState) !== JSON.stringify(stateRef.current)) {
+      setState(nextState);
+    }
+  }, [data.timelineData, data.content]);
 
   // Handle pointer-based multi-device drag to resize width
   const handleResize = (e: React.PointerEvent) => {
@@ -105,10 +91,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: an
       const nextState = { ...stateRef.current, width: nextWidth };
       
       setState(nextState);
-      const updateFn = onUpdateContent || data.onUpdateContent;
-      if (updateFn) {
-        updateFn(id, JSON.stringify(nextState), `时间轴轨道`);
-      }
+      onUpdateContent?.(id, '', `时间轴轨道`, undefined, undefined, { timelineData: nextState });
     };
 
     const onPointerUp = (upEvent: PointerEvent) => {
@@ -121,11 +104,8 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: an
     window.addEventListener('pointerup', onPointerUp);
   };
 
-  const saveStateToParent = (updatedState: TimelineTrackDataState) => {
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, JSON.stringify(updatedState), `时间轴轨道`);
-    }
+  const saveStateToParent = (updatedState: TimelineTrackDataValue) => {
+    onUpdateContent?.(id, '', `时间轴轨道`, undefined, undefined, { timelineData: updatedState });
   };
 
   const getPopoverLeft = () => {
@@ -142,10 +122,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: an
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const deleteFn = onDeleteNode || data.onDeleteNode;
-    if (deleteFn) {
-      deleteFn(id);
-    }
+    onDeleteNode?.(id);
   };
 
   return (

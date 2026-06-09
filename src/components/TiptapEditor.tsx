@@ -8,7 +8,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { 
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, 
-  RotateCcw, RotateCw, Plus, Scissors, Sparkles, FileText, ChevronRight,
+  RotateCcw, RotateCw, Scissors, FileText, ChevronRight,
   ChevronDown, ChevronUp
 } from 'lucide-react';
 
@@ -95,23 +95,6 @@ const TiptapEditor = memo(function TiptapEditor({ content, onChange, onExtractNo
       // Clear selection after extractions to dismiss the bubble menu automatically
       editor.commands.setTextSelection({ from: to, to: to });
     }
-  };
-
-  const handleSmartSplitAll = () => {
-    // Splits doc by paragraphs or headings and creates nodes for all non-empty sections
-    const blocks: string[] = [];
-    editor.state.doc.descendants((node) => {
-      if ((node.type.name === 'paragraph' || node.type.name === 'heading') && node.textContent.trim()) {
-        blocks.push(node.textContent.trim());
-      }
-    });
-
-    if (blocks.length === 0) return;
-
-    blocks.forEach((block, idx) => {
-      // Stagger slightly so they don't overlap on exact coordinate
-      onExtractNode(block, `Block ${idx + 1}`);
-    });
   };
 
   return (

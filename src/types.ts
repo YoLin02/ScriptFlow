@@ -7,6 +7,24 @@ import { Node, Edge } from '@xyflow/react';
 
 export type NodeType = 'text' | 'image' | 'idea' | 'table' | 'timeline';
 
+export interface TableNodeDataValue {
+  headers: string[];
+  rows: string[][];
+}
+
+export interface TimelineTick {
+  id: string;
+  time: string;
+  percent: number;
+}
+
+export interface TimelineTrackDataValue {
+  ticks: TimelineTick[];
+  width: number;
+  activeTickId: string | null;
+  fontSize?: number;
+}
+
 interface BaseCanvasNodeData extends Record<string, unknown> {
   id: string;
   type: NodeType;
@@ -34,10 +52,12 @@ export interface IdeaCanvasNodeData extends BaseCanvasNodeData {
 
 export interface TableCanvasNodeData extends BaseCanvasNodeData {
   type: 'table';
+  tableData?: TableNodeDataValue;
 }
 
 export interface TimelineCanvasNodeData extends BaseCanvasNodeData {
   type: 'timeline';
+  timelineData?: TimelineTrackDataValue;
 }
 
 export type CanvasNodeData =
@@ -55,6 +75,8 @@ export interface CanvasMediaAsset {
   name: string;
   uploadedAt: number;
 }
+
+export type AutoSaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 export interface WorkspaceSaveState {
   mainDocumentHtml: string;

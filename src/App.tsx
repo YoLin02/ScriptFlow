@@ -3,20 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNodesState, useEdgesState, Edge, ReactFlowProvider } from '@xyflow/react';
 import { Layout, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import Header from './components/Header';
 import TiptapEditor from './components/TiptapEditor';
 import FlowCanvas from './components/FlowCanvas';
-import { WorkspaceSaveState, WorkspaceNode, NodeType } from './types';
+import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from './types';
 import { quantumStoryPreset, brainstormPreset, blankPreset } from './presets';
 import { dbGet, dbSet, dbRemove } from './db';
+import { useFeedback } from './components/feedback/FeedbackProvider';
 
 const STORAGE_KEY = 'visual_text_flow_state';
+const MAX_HISTORY_ENTRIES = 50;
+
+interface HistoryAvailability {
+  canUndo: boolean;
+  canRedo: boolean;
+}
 
 export default function App() {
+  const { confirm: askConfirm } = useFeedback();
   const [mainDocHtml, setMainDocHtml] = useState<string>('');
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkspaceNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -25,6 +33,72 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'editor' | 'canvas' | 'split'>('split');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [historyAvailability, setHistoryAvailability] = useState<HistoryAvailability>({ canUndo: false, canRedo: false });
+
+  const undoStackRef = useRef<WorkspaceSaveState[]>([]);
+  const redoStackRef = useRef<WorkspaceSaveState[]>([]);
+  const lastHistorySignatureRef = useRef('');
+  const didSeedHistoryRef = useRef(false);
+  const isRestoringHistoryRef = useRef(false);
+
+  const createWorkspaceSnapshot = useCallback((): WorkspaceSaveState => {
+    const serializedNodes = nodes.filter(n => n && n.data).map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      width: n.width,
+      height: n.height,
+      data: {
+        id: n.data.id || n.id,
+        type: (n.data.type || n.type || 'text') as NodeType,
+        title: n.data.title,
+        content: n.data.content,
+        imageUrl: n.data.imageUrl,
+        imageCaption: n.data.imageCaption,
+        tableData: n.data.type === 'table' ? n.data.tableData : undefined,
+        timelineData: n.data.type === 'timeline' ? n.data.timelineData : undefined,
+        createdAt: n.data.createdAt || Date.now(),
+      },
+    })) as WorkspaceNode[];
+
+    return {
+      mainDocumentHtml: mainDocHtml,
+      nodes: serializedNodes,
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle,
+        targetHandle: e.targetHandle,
+        label: e.label,
+        type: e.type,
+        animated: e.animated,
+        style: e.style,
+        markerEnd: e.markerEnd,
+      })),
+    };
+  }, [mainDocHtml, nodes, edges]);
+
+  const cloneWorkspaceSnapshot = useCallback((snapshot: WorkspaceSaveState): WorkspaceSaveState => {
+    return JSON.parse(JSON.stringify(snapshot));
+  }, []);
+
+  const updateHistoryAvailability = useCallback(() => {
+    setHistoryAvailability({
+      canUndo: undoStackRef.current.length > 0,
+      canRedo: redoStackRef.current.length > 0,
+    });
+  }, []);
+
+  const restoreWorkspaceSnapshot = useCallback((snapshot: WorkspaceSaveState) => {
+    isRestoringHistoryRef.current = true;
+    setMainDocHtml(snapshot.mainDocumentHtml || '');
+    setNodes((snapshot.nodes || []) as WorkspaceNode[]);
+    setEdges((snapshot.edges || []) as Edge[]);
+  }, [setNodes, setEdges]);
 
   // Initialize and load saved state or defaults
   useEffect(() => {
@@ -55,47 +129,87 @@ export default function App() {
     if (!isLoaded) return;
     if (mainDocHtml === '' && nodes.length === 0 && edges.length === 0) return;
 
+    setSaveStatus('pending');
+    setSaveError(null);
+
     const timeoutId = setTimeout(async () => {
-      // Clean callback mappings off node models to avoid serializing functions
-      const serializedNodes = nodes.filter(n => n && n.data).map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        width: n.width,
-        height: n.height,
-        data: {
-          id: n.data.id || n.id,
-          type: (n.data.type || n.type || 'text') as NodeType,
-          title: n.data.title,
-          content: n.data.content,
-          imageUrl: n.data.imageUrl,
-          imageCaption: n.data.imageCaption,
-          createdAt: n.data.createdAt || Date.now(),
-        },
-      })) as WorkspaceNode[];
-
-      const saveObj: WorkspaceSaveState = {
-        mainDocumentHtml: mainDocHtml,
-        nodes: serializedNodes,
-        edges: edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label,
-          type: e.type,
-          animated: e.animated,
-          style: e.style,
-        })),
-      };
-
-      await dbSet(STORAGE_KEY, saveObj);
+      setSaveStatus('saving');
+      try {
+        await dbSet(STORAGE_KEY, createWorkspaceSnapshot());
+        setLastSavedAt(Date.now());
+        setSaveStatus('saved');
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : '自动保存失败');
+        setSaveStatus('error');
+      }
     }, 800); // 800ms debounce ensures zero performance footprint during continuous drag/typing
 
     return () => clearTimeout(timeoutId);
-  }, [mainDocHtml, nodes, edges, isLoaded]);
+  }, [mainDocHtml, nodes, edges, isLoaded, createWorkspaceSnapshot]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (mainDocHtml === '' && nodes.length === 0 && edges.length === 0) return;
+
+    const currentSnapshot = createWorkspaceSnapshot();
+    const currentSignature = JSON.stringify(currentSnapshot);
+
+    if (!didSeedHistoryRef.current) {
+      didSeedHistoryRef.current = true;
+      lastHistorySignatureRef.current = currentSignature;
+      updateHistoryAvailability();
+      return;
+    }
+
+    if (isRestoringHistoryRef.current) {
+      isRestoringHistoryRef.current = false;
+      lastHistorySignatureRef.current = currentSignature;
+      updateHistoryAvailability();
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      const latestSnapshot = createWorkspaceSnapshot();
+      const latestSignature = JSON.stringify(latestSnapshot);
+      if (latestSignature === lastHistorySignatureRef.current) return;
+
+      if (lastHistorySignatureRef.current) {
+        const previousSnapshot = JSON.parse(lastHistorySignatureRef.current) as WorkspaceSaveState;
+        undoStackRef.current = [...undoStackRef.current, previousSnapshot].slice(-MAX_HISTORY_ENTRIES);
+        redoStackRef.current = [];
+      }
+
+      lastHistorySignatureRef.current = latestSignature;
+      updateHistoryAvailability();
+    }, 600);
+
+    return () => clearTimeout(timeoutId);
+  }, [mainDocHtml, nodes, edges, isLoaded, createWorkspaceSnapshot, updateHistoryAvailability]);
+
+  const handleUndoWorkspace = useCallback(() => {
+    const previousSnapshot = undoStackRef.current.pop();
+    if (!previousSnapshot) return;
+
+    const currentSnapshot = cloneWorkspaceSnapshot(createWorkspaceSnapshot());
+    redoStackRef.current = [...redoStackRef.current, currentSnapshot].slice(-MAX_HISTORY_ENTRIES);
+    lastHistorySignatureRef.current = JSON.stringify(previousSnapshot);
+    restoreWorkspaceSnapshot(cloneWorkspaceSnapshot(previousSnapshot));
+    updateHistoryAvailability();
+  }, [cloneWorkspaceSnapshot, createWorkspaceSnapshot, restoreWorkspaceSnapshot, updateHistoryAvailability]);
+
+  const handleRedoWorkspace = useCallback(() => {
+    const nextSnapshot = redoStackRef.current.pop();
+    if (!nextSnapshot) return;
+
+    const currentSnapshot = cloneWorkspaceSnapshot(createWorkspaceSnapshot());
+    undoStackRef.current = [...undoStackRef.current, currentSnapshot].slice(-MAX_HISTORY_ENTRIES);
+    lastHistorySignatureRef.current = JSON.stringify(nextSnapshot);
+    restoreWorkspaceSnapshot(cloneWorkspaceSnapshot(nextSnapshot));
+    updateHistoryAvailability();
+  }, [cloneWorkspaceSnapshot, createWorkspaceSnapshot, restoreWorkspaceSnapshot, updateHistoryAvailability]);
 
   // Handle Preset Load
-  const handleLoadPreset = useCallback((presetName: string) => {
+  const handleLoadPreset = useCallback(async (presetName: string) => {
     let targetPreset = quantumStoryPreset;
     if (presetName === 'brainstorm') {
       targetPreset = brainstormPreset;
@@ -103,29 +217,47 @@ export default function App() {
       targetPreset = blankPreset;
     }
 
-    if (confirm(`加载该预设模板将覆盖您当前的全部写入数据，确定吗？`)) {
+    const confirmed = await askConfirm({
+      title: '加载预设模板',
+      message: '加载该预设模板将覆盖当前工作区内容，确定继续吗？',
+      confirmText: '加载预设',
+      cancelText: '取消',
+      destructive: true,
+    });
+
+    if (confirmed) {
       setMainDocHtml(targetPreset.mainDocumentHtml);
       setNodes(targetPreset.nodes as WorkspaceNode[]);
       setEdges(targetPreset.edges as Edge[]);
     }
-  }, [setNodes, setEdges]);
+  }, [askConfirm, setNodes, setEdges]);
 
   // Reset entire Workspace
   const handleResetWorkspace = useCallback(async () => {
-    if (confirm('确定要清空整张文档及全部卡片内容吗？所有的进度将不予保存。')) {
+    const confirmed = await askConfirm({
+      title: '清空工作区',
+      message: '确定要清空整张文档及全部卡片内容吗？这个操作会移除当前本地保存的进度。',
+      confirmText: '清空',
+      cancelText: '取消',
+      destructive: true,
+    });
+
+    if (confirmed) {
       setMainDocHtml('<h1>开始全新的书写...</h1><p>在此输入草稿，或从段落切片管理器点击 ➔ 将其转化为卡片节点。</p>');
       setNodes([]);
       setEdges([]);
       await dbRemove(STORAGE_KEY);
+      setLastSavedAt(Date.now());
+      setSaveStatus('saved');
     }
-  }, [setNodes, setEdges]);
+  }, [askConfirm, setNodes, setEdges]);
 
   // Export current State Obj as a backup JSON File
   const handleExportState = useCallback(() => {
     const backupObj = {
       mainDocumentHtml: mainDocHtml,
-      nodes: nodes,
-      edges: edges,
+      nodes: createWorkspaceSnapshot().nodes,
+      edges: createWorkspaceSnapshot().edges,
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -134,7 +266,7 @@ export default function App() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  }, [mainDocHtml, nodes, edges]);
+  }, [mainDocHtml, createWorkspaceSnapshot]);
 
   // Import State from user uploaded Backup JSON File
   const handleImportState = useCallback((state: WorkspaceSaveState) => {
@@ -243,6 +375,13 @@ export default function App() {
               onExportState={handleExportState}
               onImportState={handleImportState}
               onResetWorkspace={handleResetWorkspace}
+              canUndo={historyAvailability.canUndo}
+              canRedo={historyAvailability.canRedo}
+              onUndo={handleUndoWorkspace}
+              onRedo={handleRedoWorkspace}
+              saveStatus={saveStatus}
+              lastSavedAt={lastSavedAt}
+              saveError={saveError}
             />
           </ReactFlowProvider>
         </div>

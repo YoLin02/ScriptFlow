@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { FeedbackProvider } from './components/feedback/FeedbackProvider.tsx';
+import { APP_NAME } from './appMetadata.ts';
+
+document.title = APP_NAME;
 
 // Safely suppress benign ResizeObserver loop limit warnings/errors
 if (typeof window !== 'undefined') {
@@ -26,6 +30,8 @@ if (typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <FeedbackProvider>
+      <App />
+    </FeedbackProvider>
   </StrictMode>,
 );

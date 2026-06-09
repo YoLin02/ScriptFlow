@@ -17,10 +17,21 @@ import {
 } from '@xyflow/react';
 
 import { TextNode, ImageNode, IdeaNode, TableNode, TimelineNode, NodeActionContext } from './CustomNodes';
-import { CanvasMediaAsset, NodeType, WorkspaceNode, WorkspaceSaveState } from '../types';
+import {
+  AutoSaveStatus,
+  CanvasMediaAsset,
+  CanvasNodeData,
+  NodeType,
+  TableNodeDataValue,
+  TimelineTrackDataValue,
+  WorkspaceNode,
+  WorkspaceSaveState,
+} from '../types';
 import Header from './Header';
 import { dbGet, dbSet } from '../db';
+import { useFeedback } from './feedback/FeedbackProvider';
 import CanvasToolbar from './CanvasToolbar';
+import WorkspaceHistoryControls from './WorkspaceHistoryControls';
 import EdgeRelationshipEditor from './EdgeRelationshipEditor';
 import MediaLibraryDrawer from './MediaLibraryDrawer';
 import AssemblyPreviewModal from './AssemblyPreviewModal';
@@ -47,6 +58,13 @@ interface FlowCanvasProps {
   onExportState: () => void;
   onImportState: (state: WorkspaceSaveState) => void;
   onResetWorkspace: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  saveStatus: AutoSaveStatus;
+  lastSavedAt: number | null;
+  saveError: string | null;
 }
 
 export default function FlowCanvas({
@@ -61,8 +79,16 @@ export default function FlowCanvas({
   onExportState,
   onImportState,
   onResetWorkspace,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  saveStatus,
+  lastSavedAt,
+  saveError,
 }: FlowCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
+  const { toast } = useFeedback();
 
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [customEdgeRelation, setCustomEdgeRelation] = useState('');
@@ -234,7 +260,14 @@ export default function FlowCanvas({
     });
   }, [setNodes]);
 
-  const handleUpdateNodeContent = useCallback((id: string, text: string, title?: string, imageUrl?: string, imageCaption?: string) => {
+  const handleUpdateNodeContent = useCallback((
+    id: string,
+    text: string,
+    title?: string,
+    imageUrl?: string,
+    imageCaption?: string,
+    extraData?: Partial<CanvasNodeData>,
+  ) => {
     setNodes((currentNodes) =>
       currentNodes.map((node) => {
         if (node.id !== id) return node;
@@ -246,10 +279,20 @@ export default function FlowCanvas({
             title: title !== undefined ? title : node.data.title,
             imageUrl: imageUrl !== undefined ? imageUrl : node.data.imageUrl,
             imageCaption: imageCaption !== undefined ? imageCaption : node.data.imageCaption,
+            ...extraData,
           },
         } as WorkspaceNode;
       }),
     );
+
+    const timelineData = (extraData as { timelineData?: TimelineTrackDataValue } | undefined)?.timelineData;
+    if (timelineData?.ticks) {
+      const validTickIds = new Set(timelineData.ticks.map((tick) => tick.id));
+      setEdges((currentEdges) =>
+        currentEdges.filter((edge) => edge.source !== id || !edge.sourceHandle || validTickIds.has(edge.sourceHandle)),
+      );
+      return;
+    }
 
     try {
       if (text.trim().startsWith('{')) {
@@ -355,6 +398,7 @@ export default function FlowCanvas({
     const id = `node-${Date.now()}`;
     let content = '双击此卡片输入内容...';
     let title = '新建卡片';
+    let extraData: Partial<CanvasNodeData> = {};
 
     if (type === 'image') {
       content = '';
@@ -363,16 +407,19 @@ export default function FlowCanvas({
       content = '记录突发的写作灵感或批注备注';
       title = '灵感火花';
     } else if (type === 'table') {
-      content = JSON.stringify({
+      content = '';
+      const tableData: TableNodeDataValue = {
         headers: ['项目', '分工', '状态'],
         rows: [
           ['模块A', '张三', '进行中'],
           ['模块B', '李四', '未开始'],
         ],
-      });
+      };
+      extraData = { tableData } as Partial<CanvasNodeData>;
       title = '结构化数据表';
     } else if (type === 'timeline') {
-      content = JSON.stringify({
+      content = '';
+      const timelineData: TimelineTrackDataValue = {
         ticks: [
           { id: `tick-${Date.now()}-0`, time: '00:00', percent: 10 },
           { id: `tick-${Date.now()}-1`, time: '10:00', percent: 50 },
@@ -380,7 +427,9 @@ export default function FlowCanvas({
         ],
         width: 750,
         activeTickId: null,
-      });
+        fontSize: 12,
+      };
+      extraData = { timelineData } as Partial<CanvasNodeData>;
       title = '时间轴轨道';
     }
 
@@ -394,6 +443,7 @@ export default function FlowCanvas({
         content,
         title,
         createdAt: Date.now(),
+        ...extraData,
       },
     } as WorkspaceNode;
 
@@ -488,7 +538,7 @@ export default function FlowCanvas({
 
   const handleDownloadAllImages = useCallback(() => {
     if (mediaAssets.length === 0) {
-      alert('配图文件夹中现在没有图片哦！');
+      toast('配图文件夹中现在没有图片。');
       return;
     }
 
@@ -507,28 +557,28 @@ export default function FlowCanvas({
         document.body.removeChild(link);
       }, idx * 250);
     });
-  }, [mediaAssets]);
+  }, [mediaAssets, toast]);
 
   const handleAssembleDocument = useCallback(() => {
     if (nodes.length === 0) {
-      alert('画布中没有节点，无法生成！');
+      toast('画布中没有节点，无法生成。');
       return;
     }
 
     if (!nodes.some((node) => node.type === 'text' || node.type === 'idea')) {
-      alert('画布中没有带有文本的内容或灵感卡片，请点击左上角切片或手动添加卡片！');
+      toast('画布中没有文本或灵感卡片，请先添加内容。');
       return;
     }
 
     setAssembledDocText(assembleDocumentFromGraph(nodes, edges));
     setIsAssemblyModalOpen(true);
     setIsDrawerOpen(false);
-  }, [nodes, edges]);
+  }, [nodes, edges, toast]);
 
   const handleApplyAssembledToMainDoc = () => {
     onUpdateMainDocument(assembledTextToHtml(assembledDocText));
     setIsAssemblyModalOpen(false);
-    alert('成功反向还原文档至左侧文本编辑器！');
+    toast('已反向还原到左侧文本编辑器。', 'success');
   };
 
   const handleCopyToClipboard = () => {
@@ -559,11 +609,22 @@ export default function FlowCanvas({
             setIsMediaLibraryOpen(false);
           }
         }}
+        leadingActions={
+          <WorkspaceHistoryControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+          />
+        }
         rightActions={
           <CanvasToolbar
             isDrawerOpen={isDrawerOpen}
             isMediaLibraryOpen={isMediaLibraryOpen}
             mediaAssetCount={mediaAssets.length}
+            saveStatus={saveStatus}
+            lastSavedAt={lastSavedAt}
+            saveError={saveError}
             onToggleMediaLibrary={() => {
               const nextState = !isMediaLibraryOpen;
               setIsMediaLibraryOpen(nextState);

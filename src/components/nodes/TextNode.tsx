@@ -2,7 +2,9 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, FileText, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-export const TextNode = memo(({ id, data, selected }: { id: string; data: any; selected?: boolean }) => {
+import type { TextCanvasNodeData } from '../../types';
+
+export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
   const isEditing = editingId === id;
   const setIsEditing = (val: boolean) => {
@@ -29,10 +31,7 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: any; s
 
   const onSave = () => {
     setIsEditing(false);
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, editorVal, titleVal);
-    }
+    onUpdateContent?.(id, editorVal, titleVal);
   };
 
   // Automate saving on dismiss of edit mode
@@ -40,13 +39,10 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: any; s
   useEffect(() => {
     const active = editingId === id;
     if (wasEditing.current && !active) {
-      const updateFn = onUpdateContent || data.onUpdateContent;
-      if (updateFn) {
-        updateFn(id, editorVal, titleVal);
-      }
+      onUpdateContent?.(id, editorVal, titleVal);
     }
     wasEditing.current = active;
-  }, [editingId, id, editorVal, titleVal, onUpdateContent, data.onUpdateContent]);
+  }, [editingId, id, editorVal, titleVal, onUpdateContent]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -67,10 +63,7 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: any; s
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const deleteFn = onDeleteNode || data.onDeleteNode;
-    if (deleteFn) {
-      deleteFn(id);
-    }
+    onDeleteNode?.(id);
   };
 
   return (

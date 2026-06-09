@@ -5,16 +5,18 @@
 
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { 
-  Feather, MoreHorizontal, Download, Upload, Trash2, HelpCircle, 
-  Compass, Layers, Lightbulb, FileText, ChevronDown, Check
+  MoreHorizontal, Download, Upload, HelpCircle, Compass
 } from 'lucide-react';
 import { WorkspaceSaveState } from '../types';
+import { useFeedback } from './feedback/FeedbackProvider';
+import { APP_NAME, APP_VERSION } from '../appMetadata';
 
 interface HeaderProps {
   onLoadPreset: (presetName: string) => void;
   onExportState: () => void;
   onImportState: (state: WorkspaceSaveState) => void;
   onResetWorkspace: () => void;
+  leadingActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   menuOpen?: boolean;
   onMenuOpenChange?: (open: boolean) => void;
@@ -25,10 +27,12 @@ const Header = memo(function Header({
   onExportState, 
   onImportState, 
   onResetWorkspace,
+  leadingActions,
   rightActions,
   menuOpen,
   onMenuOpenChange
 }: HeaderProps) {
+  const { toast } = useFeedback();
   const [localShowMenu, setLocalShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,12 +68,12 @@ const Header = memo(function Header({
           const stateObj = JSON.parse(event.target?.result as string);
           if (stateObj.mainDocumentHtml !== undefined && Array.isArray(stateObj.nodes)) {
             onImportState(stateObj);
-            alert('工作空间导入成功！');
+            toast('工作空间导入成功。', 'success');
           } else {
-            alert('无效的文件格式。请导入由本应用导出的 JSON 文件。');
+            toast('无效的文件格式，请导入本应用导出的 JSON 文件。', 'error');
           }
         } catch (err) {
-          alert('解析导入文件失败，可能不是标准的 JSON。');
+          toast('解析导入文件失败，可能不是标准 JSON。', 'error');
         }
       };
       reader.readAsText(file);
@@ -104,73 +108,72 @@ const Header = memo(function Header({
   return (
     <header className="absolute top-4 left-4 right-4 bg-transparent select-none z-30 flex items-center justify-between pointer-events-none">
       {/* Brand Identity / Title info */}
-      <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur-md border border-neutral-200/80 shadow-md py-1 px-3 rounded-lg pointer-events-auto">
-        <div className="w-5 h-5 rounded bg-neutral-900 flex items-center justify-center text-white">
-          <Feather className="w-3 h-3 stroke-[2]" />
-        </div>
-        <div>
-          <h1 className="text-xs font-semibold tracking-tight text-neutral-950 flex items-center gap-1.5">
-            <span>Visual Document Flow</span>
-            <span className="text-[8px] font-normal font-mono bg-neutral-100 text-neutral-500 py-0.5 px-1 rounded-xs">
-              v1.0
-            </span>
-          </h1>
-        </div>
+      <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-neutral-200/80 shadow-md py-1.5 px-3.5 rounded-lg pointer-events-auto">
+        <h1 className="text-xs font-semibold tracking-tight text-neutral-950 flex items-center gap-1.5">
+          <span>{APP_NAME}</span>
+          <span className="text-[8px] font-normal font-mono bg-neutral-100 text-neutral-500 py-0.5 px-1 rounded-xs">
+            {APP_VERSION}
+          </span>
+        </h1>
       </div>
 
-      {/* Extreme Minimalist Controls: Right actions and the shadow-free '...' menu */}
-      <div className="flex items-center gap-1.5 pointer-events-auto bg-white/70 backdrop-blur-md border border-neutral-200/50 shadow-md py-1 px-1.5 rounded-lg" ref={menuRef}>
-        {rightActions}
-        {rightActions && <div className="h-4 w-px bg-neutral-200/60 mx-0.5" />}
-        
-        <div className="relative">
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-150 bg-transparent transition-all cursor-pointer ${isMenuOpen ? 'text-neutral-900 bg-neutral-100' : ''}`}
-            title="功能菜单"
-            id="header-menu-button"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+      <div className="flex items-start gap-2 pointer-events-auto">
+        {leadingActions}
 
-          {/* Dropdown Menu Container */}
-          {isMenuOpen && (
-            <div className="absolute right-0 top-[34px] w-56 bg-white/95 backdrop-blur-md border border-neutral-200 shadow-xl rounded-lg py-1.5 z-50 text-neutral-700 animate-in fade-in slide-in-from-top-1">
+        {/* Extreme Minimalist Controls: Right actions and the shadow-free '...' menu */}
+        <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-md border border-neutral-200/50 shadow-md py-1 px-1.5 rounded-lg" ref={menuRef}>
+          {rightActions}
+          {rightActions && <div className="h-4 w-px bg-neutral-200/60 mx-0.5" />}
+          
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={`flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-150 bg-transparent transition-all cursor-pointer ${isMenuOpen ? 'text-neutral-900 bg-neutral-100' : ''}`}
+              title="功能菜单"
+              id="header-menu-button"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {/* Dropdown Menu Container */}
+            {isMenuOpen && (
+              <div className="absolute right-0 top-[34px] w-56 bg-white/95 backdrop-blur-md border border-neutral-200 shadow-xl rounded-lg py-1.5 z-50 text-neutral-700 animate-in fade-in slide-in-from-top-1">
             
-            {/* Input/Output Data segment */}
-            <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
-              工作区备份管理
-            </div>
-            <button
-              onClick={handleImportClick}
-              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
-            >
-              <Upload className="w-3.5 h-3.5 text-neutral-400" />
-              <span>导入工作区数据 (.json)</span>
-            </button>
-            <button
-              onClick={handleExportClick}
-              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
-            >
-              <Download className="w-3.5 h-3.5 text-neutral-400" />
-              <span>导出工作区备份 (.json)</span>
-            </button>
+              {/* Input/Output Data segment */}
+              <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
+                工作区备份管理
+              </div>
+              <button
+                onClick={handleImportClick}
+                className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+              >
+                <Upload className="w-3.5 h-3.5 text-neutral-400" />
+                <span>导入工作区数据 (.json)</span>
+              </button>
+              <button
+                onClick={handleExportClick}
+                className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+              >
+                <Download className="w-3.5 h-3.5 text-neutral-400" />
+                <span>导出工作区备份 (.json)</span>
+              </button>
 
-            <div className="h-px bg-neutral-100 my-1.5" />
+              <div className="h-px bg-neutral-100 my-1.5" />
 
-            {/* Help & System segment */}
-            <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
-              系统工具
+              {/* Help & System segment */}
+              <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
+                系统工具
+              </div>
+              <button
+                onClick={handleHelpClick}
+                className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-neutral-400" />
+                <span>协同书写指南</span>
+              </button>
             </div>
-            <button
-              onClick={handleHelpClick}
-              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-neutral-400" />
-              <span>协同书写指南</span>
-            </button>
+          )}
           </div>
-        )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { Edge } from '@xyflow/react';
-import { WorkspaceNode } from '../types';
+import { TimelineTrackDataValue, WorkspaceNode } from '../types';
 
 export const DEFAULT_RELATION_TAGS = ['承接', '转折/对比', '因果/推导', '分支/并行', '补充证据', '批注备注'];
 
@@ -28,7 +28,14 @@ export function getEdgePresentation(typeLabel: string) {
 
 export function getActiveTickDetails(nodes: WorkspaceNode[]) {
   for (const node of nodes) {
-    if (node.type === 'timeline' && node.data?.content) {
+    if (node.type !== 'timeline') continue;
+
+    const timelineData = (node.data as { timelineData?: TimelineTrackDataValue }).timelineData;
+    if (timelineData?.activeTickId) {
+      return { nodeId: node.id, tickId: timelineData.activeTickId };
+    }
+
+    if (node.data?.content) {
       try {
         const parsed = JSON.parse(node.data.content);
         if (parsed && parsed.activeTickId) {

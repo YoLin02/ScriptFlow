@@ -2,7 +2,9 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, Lightbulb, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-export const IdeaNode = memo(({ id, data, selected }: { id: string; data: any; selected?: boolean }) => {
+import type { IdeaCanvasNodeData } from '../../types';
+
+export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
   const isEditing = editingId === id;
   const setIsEditing = (val: boolean) => {
@@ -22,10 +24,7 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: any; s
 
   const onSave = () => {
     setIsEditing(false);
-    const updateFn = onUpdateContent || data.onUpdateContent;
-    if (updateFn) {
-      updateFn(id, editorVal);
-    }
+    onUpdateContent?.(id, editorVal);
   };
 
   // Automate saving on dismiss of edit mode
@@ -33,13 +32,10 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: any; s
   useEffect(() => {
     const active = editingId === id;
     if (wasEditing.current && !active) {
-      const updateFn = onUpdateContent || data.onUpdateContent;
-      if (updateFn) {
-        updateFn(id, editorVal);
-      }
+      onUpdateContent?.(id, editorVal);
     }
     wasEditing.current = active;
-  }, [editingId, id, editorVal, onUpdateContent, data.onUpdateContent]);
+  }, [editingId, id, editorVal, onUpdateContent]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -60,10 +56,7 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: any; s
 
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const deleteFn = onDeleteNode || data.onDeleteNode;
-    if (deleteFn) {
-      deleteFn(id);
-    }
+    onDeleteNode?.(id);
   };
 
   return (

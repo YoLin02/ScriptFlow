@@ -1,5 +1,6 @@
 import { Download, FolderOpen, Image, Trash2, Upload, X } from 'lucide-react';
 import { CanvasMediaAsset } from '../types';
+import { useFeedback } from './feedback/FeedbackProvider';
 
 interface MediaLibraryDrawerProps {
   open: boolean;
@@ -22,6 +23,8 @@ export default function MediaLibraryDrawer({
   onDeleteAsset,
   onDownloadAll,
 }: MediaLibraryDrawerProps) {
+  const { confirm: askConfirm } = useFeedback();
+
   if (!open) return null;
 
   return (
@@ -125,9 +128,16 @@ export default function MediaLibraryDrawer({
                     {asset.name}
                   </span>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      if (confirm(`确定要从媒体库删除 "${asset.name}" 吗？\n(这不会直接清除正在画布中引用的节点)`)) {
+                      const confirmed = await askConfirm({
+                        title: '删除媒体资源',
+                        message: `确定要从媒体库删除 "${asset.name}" 吗？这不会直接清除正在画布中引用的节点。`,
+                        confirmText: '删除',
+                        cancelText: '取消',
+                        destructive: true,
+                      });
+                      if (confirmed) {
                         onDeleteAsset(asset.id);
                       }
                     }}
