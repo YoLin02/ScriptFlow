@@ -1,0 +1,698 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactFlow,
+  MiniMap,
+  Controls,
+  Background,
+  addEdge,
+  Connection,
+  Edge,
+  MarkerType,
+  useReactFlow,
+} from '@xyflow/react';
+
+import { TextNode, ImageNode, IdeaNode, TableNode, TimelineNode, NodeActionContext } from './CustomNodes';
+import { CanvasMediaAsset, NodeType, WorkspaceNode, WorkspaceSaveState } from '../types';
+import Header from './Header';
+import { dbGet, dbSet } from '../db';
+import CanvasToolbar from './CanvasToolbar';
+import EdgeRelationshipEditor from './EdgeRelationshipEditor';
+import MediaLibraryDrawer from './MediaLibraryDrawer';
+import AssemblyPreviewModal from './AssemblyPreviewModal';
+import ClearCanvasConfirmModal from './ClearCanvasConfirmModal';
+import CanvasHintBubble from './CanvasHintBubble';
+import {
+  DEFAULT_RELATION_TAGS,
+  assembleDocumentFromGraph,
+  assembledTextToHtml,
+  getActiveTickDetails,
+  getConnectedNodeIds,
+  getEdgePresentation,
+} from './flowCanvasUtils';
+
+interface FlowCanvasProps {
+  nodes: WorkspaceNode[];
+  edges: Edge[];
+  onNodesChange: any;
+  onEdgesChange: any;
+  setNodes: React.Dispatch<React.SetStateAction<WorkspaceNode[]>>;
+  setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
+  onUpdateMainDocument: (newHtml: string) => void;
+  onLoadPreset: (presetName: string) => void;
+  onExportState: () => void;
+  onImportState: (state: WorkspaceSaveState) => void;
+  onResetWorkspace: () => void;
+}
+
+export default function FlowCanvas({
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  setNodes,
+  setEdges,
+  onUpdateMainDocument,
+  onLoadPreset,
+  onExportState,
+  onImportState,
+  onResetWorkspace,
+}: FlowCanvasProps) {
+  const { screenToFlowPosition } = useReactFlow();
+
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [customEdgeRelation, setCustomEdgeRelation] = useState('');
+  const [shortcutTags, setShortcutTags] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('custom_relation_tags');
+      return saved ? JSON.parse(saved) : DEFAULT_RELATION_TAGS;
+    } catch (e) {
+      console.error(e);
+      return DEFAULT_RELATION_TAGS;
+    }
+  });
+
+  const [isAssemblyModalOpen, setIsAssemblyModalOpen] = useState(false);
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [assembledDocText, setAssembledDocText] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showHints, setShowHints] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  const [mediaAssets, setMediaAssets] = useState<CanvasMediaAsset[]>([]);
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+
+  const fileFolderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('custom_relation_tags', JSON.stringify(shortcutTags));
+  }, [shortcutTags]);
+
+  useEffect(() => {
+    setCustomEdgeRelation(selectedEdge ? (selectedEdge.label as string) || '' : '');
+  }, [selectedEdge]);
+
+  useEffect(() => {
+    async function loadAssets() {
+      try {
+        const saved = await dbGet<CanvasMediaAsset[]>('canvas_media_assets');
+        if (saved) {
+          setMediaAssets(saved);
+        }
+      } catch (e) {
+        console.error('Failed to load media assets', e);
+      } finally {
+        setIsAssetsLoaded(true);
+      }
+    }
+    loadAssets();
+  }, []);
+
+  useEffect(() => {
+    if (!isAssetsLoaded) return;
+    dbSet('canvas_media_assets', mediaAssets).catch((e) => {
+      console.error('Failed to save media assets', e);
+    });
+  }, [mediaAssets, isAssetsLoaded]);
+
+  const nodeTypes = useMemo(() => ({
+    text: TextNode,
+    image: ImageNode,
+    idea: IdeaNode,
+    table: TableNode,
+    timeline: TimelineNode,
+  }), []);
+
+  const activeTimelineNode = useMemo(
+    () => nodes.find((node) => node.type === 'timeline' && node.selected),
+    [nodes],
+  );
+  const activeTickDetails = useMemo(() => getActiveTickDetails(nodes), [nodes]);
+  const isFilterActive = !!(activeTimelineNode || activeTickDetails);
+  const connectedNodeIds = useMemo(
+    () => getConnectedNodeIds(nodes, edges, activeTimelineNode, activeTickDetails),
+    [nodes, edges, activeTimelineNode, activeTickDetails],
+  );
+
+  const displayNodes = useMemo(() => {
+    if (!isFilterActive) return nodes;
+
+    return nodes.map((node) => {
+      const isConnected = connectedNodeIds.has(node.id);
+      return {
+        ...node,
+        style: {
+          ...node.style,
+          opacity: isConnected ? 1.0 : 0.15,
+          transition: 'opacity 0.25s ease-in-out',
+          filter: isConnected ? 'none' : 'grayscale(25%)',
+        },
+      };
+    });
+  }, [nodes, isFilterActive, connectedNodeIds]);
+
+  const displayEdges = useMemo(() => {
+    if (!isFilterActive) return edges;
+
+    return edges.map((edge) => {
+      const isSourceConnected = connectedNodeIds.has(edge.source);
+      const isTargetConnected = connectedNodeIds.has(edge.target);
+      const isLinkActive = activeTickDetails
+        ? edge.source === activeTickDetails.nodeId
+          ? edge.sourceHandle === activeTickDetails.tickId
+          : isSourceConnected && isTargetConnected
+        : isSourceConnected && isTargetConnected;
+
+      return {
+        ...edge,
+        animated: isLinkActive ? true : edge.animated,
+        style: {
+          ...edge.style,
+          opacity: isLinkActive ? 1.0 : 0.12,
+          stroke: isLinkActive ? '#171717' : '#e5e5e5',
+          strokeWidth: isLinkActive ? 2.5 : 1.0,
+          transition: 'opacity 0.2s ease, stroke 0.2s ease',
+        },
+      };
+    });
+  }, [edges, isFilterActive, activeTickDetails, connectedNodeIds]);
+
+  const getCenteredNodePosition = useCallback((xOffset = 120, yOffset = 120) => {
+    try {
+      const flowContainer = document.querySelector('.react-flow');
+      let clientX = window.innerWidth / 2;
+      let clientY = window.innerHeight / 2;
+
+      if (flowContainer) {
+        const rect = flowContainer.getBoundingClientRect();
+        clientX = rect.left + rect.width / 2;
+        clientY = rect.top + rect.height / 2;
+      }
+
+      const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+      return {
+        x: flowPos.x - xOffset + (Math.random() - 0.5) * 40,
+        y: flowPos.y - yOffset + (Math.random() - 0.5) * 40,
+      };
+    } catch (err) {
+      console.warn('screenToFlowPosition error, using fallback coordinates', err);
+      return {
+        x: 100 + Math.random() * 150,
+        y: 100 + Math.random() * 150,
+      };
+    }
+  }, [screenToFlowPosition]);
+
+  const handleNodeDragStop = useCallback((event: any, node: WorkspaceNode) => {
+    if (node.type !== 'timeline') return;
+
+    setNodes((currentNodes) => {
+      const otherTimelineYs = currentNodes
+        .filter((candidate) => candidate.type === 'timeline' && candidate.id !== node.id)
+        .map((candidate) => candidate.position.y);
+
+      const snapDistance = 35;
+      const closeY = otherTimelineYs.find((y) => Math.abs(y - node.position.y) < snapDistance);
+      const targetY = closeY !== undefined ? closeY : Math.round(node.position.y / 20) * 20;
+
+      return currentNodes.map((candidate) => {
+        if (candidate.id !== node.id) return candidate;
+        return {
+          ...candidate,
+          position: {
+            x: Math.round(node.position.x / 20) * 20,
+            y: targetY,
+          },
+        };
+      });
+    });
+  }, [setNodes]);
+
+  const handleUpdateNodeContent = useCallback((id: string, text: string, title?: string, imageUrl?: string, imageCaption?: string) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== id) return node;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            content: text,
+            title: title !== undefined ? title : node.data.title,
+            imageUrl: imageUrl !== undefined ? imageUrl : node.data.imageUrl,
+            imageCaption: imageCaption !== undefined ? imageCaption : node.data.imageCaption,
+          },
+        } as WorkspaceNode;
+      }),
+    );
+
+    try {
+      if (text.trim().startsWith('{')) {
+        const parsed = JSON.parse(text);
+        if (parsed.ticks && Array.isArray(parsed.ticks)) {
+          const validTickIds = new Set(parsed.ticks.map((tick: any) => tick.id));
+          setEdges((currentEdges) =>
+            currentEdges.filter((edge) => edge.source !== id || !edge.sourceHandle || validTickIds.has(edge.sourceHandle)),
+          );
+        }
+      }
+    } catch (e) {}
+  }, [setNodes, setEdges]);
+
+  const handleDeleteNode = useCallback((id: string) => {
+    setNodes((currentNodes) => currentNodes.filter((node) => node.id !== id));
+    setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== id && edge.target !== id));
+  }, [setNodes, setEdges]);
+
+  const handleAutoLayout = useCallback(() => {
+    setNodes((currentNodes) => {
+      const textNodes = currentNodes.filter((node) => node.type === 'text');
+      const imageNodes = currentNodes.filter((node) => node.type === 'image');
+      const ideaNodes = currentNodes.filter((node) => node.type === 'idea');
+      const tableNodes = currentNodes.filter((node) => node.type === 'table');
+      const timelineNodes = currentNodes.filter((node) => node.type === 'timeline');
+
+      return currentNodes.map((node) => {
+        let position = { x: node.position.x, y: node.position.y };
+
+        if (node.type === 'text') {
+          const idx = textNodes.findIndex((candidate) => candidate.id === node.id);
+          position = { x: 80 + (idx % 3) * 360, y: 80 + Math.floor(idx / 3) * 260 };
+        } else if (node.type === 'image') {
+          const idx = imageNodes.findIndex((candidate) => candidate.id === node.id);
+          position = { x: 80 + (idx % 3) * 320, y: 480 + Math.floor(idx / 3) * 320 };
+        } else if (node.type === 'idea') {
+          const idx = ideaNodes.findIndex((candidate) => candidate.id === node.id);
+          position = { x: 80 + (idx % 4) * 280, y: 880 + Math.floor(idx / 4) * 220 };
+        } else if (node.type === 'table') {
+          const idx = tableNodes.findIndex((candidate) => candidate.id === node.id);
+          position = { x: 80 + (idx % 2) * 440, y: 1120 + Math.floor(idx / 2) * 280 };
+        } else if (node.type === 'timeline') {
+          const sortedTimeline = [...timelineNodes].sort((a, b) => a.position.x - b.position.x);
+          const idx = sortedTimeline.findIndex((candidate) => candidate.id === node.id);
+          position = { x: 80 + idx * 540, y: 500 };
+        }
+
+        return { ...node, position };
+      });
+    });
+  }, [setNodes]);
+
+  const onConnect = useCallback((params: Connection) => {
+    const newEdge: Edge = {
+      id: `e-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      source: params.source,
+      target: params.target,
+      sourceHandle: params.sourceHandle,
+      targetHandle: params.targetHandle,
+      label: '镜头关联',
+      animated: true,
+      style: { stroke: '#737373', strokeWidth: 1.5 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 16,
+        height: 16,
+        color: '#737373',
+      },
+    };
+    setEdges((currentEdges) => addEdge(newEdge, currentEdges));
+  }, [setEdges]);
+
+  const handleUpdateEdgeRelationship = useCallback((typeLabel: string) => {
+    if (!selectedEdge) return;
+
+    const trimmed = typeLabel.trim();
+    if (trimmed) {
+      setShortcutTags((currentTags) => currentTags.includes(trimmed) ? currentTags : [...currentTags, trimmed]);
+    }
+
+    setEdges((currentEdges) =>
+      currentEdges.map((edge) => {
+        if (edge.id !== selectedEdge.id) return edge;
+        const presentation = getEdgePresentation(typeLabel);
+        return {
+          ...edge,
+          label: typeLabel,
+          ...presentation,
+        };
+      }),
+    );
+    setSelectedEdge(null);
+  }, [selectedEdge, setEdges]);
+
+  const handleDeleteSelectedEdge = useCallback(() => {
+    if (!selectedEdge) return;
+    setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== selectedEdge.id));
+    setSelectedEdge(null);
+  }, [selectedEdge, setEdges]);
+
+  const handleAddNewNode = useCallback((type: NodeType) => {
+    const id = `node-${Date.now()}`;
+    let content = '双击此卡片输入内容...';
+    let title = '新建卡片';
+
+    if (type === 'image') {
+      content = '';
+      title = '图片节点';
+    } else if (type === 'idea') {
+      content = '记录突发的写作灵感或批注备注';
+      title = '灵感火花';
+    } else if (type === 'table') {
+      content = JSON.stringify({
+        headers: ['项目', '分工', '状态'],
+        rows: [
+          ['模块A', '张三', '进行中'],
+          ['模块B', '李四', '未开始'],
+        ],
+      });
+      title = '结构化数据表';
+    } else if (type === 'timeline') {
+      content = JSON.stringify({
+        ticks: [
+          { id: `tick-${Date.now()}-0`, time: '00:00', percent: 10 },
+          { id: `tick-${Date.now()}-1`, time: '10:00', percent: 50 },
+          { id: `tick-${Date.now()}-2`, time: '20:00', percent: 90 },
+        ],
+        width: 750,
+        activeTickId: null,
+      });
+      title = '时间轴轨道';
+    }
+
+    const newNode: WorkspaceNode = {
+      id,
+      type,
+      position: getCenteredNodePosition(),
+      data: {
+        id,
+        type,
+        content,
+        title,
+        createdAt: Date.now(),
+      },
+    } as WorkspaceNode;
+
+    setNodes((currentNodes) => [...currentNodes, newNode]);
+    setIsDrawerOpen(false);
+  }, [getCenteredNodePosition, setNodes]);
+
+  const handleBatchImageUpload = useCallback((files: File[]) => {
+    files.forEach((file) => {
+      const nameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const newAsset: CanvasMediaAsset = {
+          id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          url: base64String,
+          name: nameWithoutExtension,
+          uploadedAt: Date.now(),
+        };
+
+        setMediaAssets((currentAssets) => {
+          if (currentAssets.some((asset) => asset.name === nameWithoutExtension)) {
+            return currentAssets;
+          }
+          return [newAsset, ...currentAssets];
+        });
+
+        const nodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+        const newNode: WorkspaceNode = {
+          id: nodeId,
+          type: 'image',
+          position: {
+            x: 100 + Math.random() * 250,
+            y: 100 + Math.random() * 250,
+          },
+          data: {
+            id: nodeId,
+            type: 'image',
+            content: '',
+            title: nameWithoutExtension,
+            imageUrl: base64String,
+            imageCaption: nameWithoutExtension,
+            createdAt: Date.now(),
+          },
+        };
+
+        setNodes((currentNodes) => [...currentNodes, newNode]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [setNodes]);
+
+  const handleInsertAssetNode = useCallback((asset: CanvasMediaAsset) => {
+    setNodes((currentNodes) => {
+      const selectedNode = currentNodes.find((node) => node.selected);
+
+      if (selectedNode) {
+        return currentNodes.map((node) => {
+          if (node.id !== selectedNode.id) return node;
+          return {
+            ...node,
+            type: 'image',
+            data: {
+              ...node.data,
+              type: 'image',
+              imageUrl: asset.url,
+              title: asset.name,
+              imageCaption: asset.name,
+            },
+          } as WorkspaceNode;
+        });
+      }
+
+      const nodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      const newNode: WorkspaceNode = {
+        id: nodeId,
+        type: 'image',
+        position: getCenteredNodePosition(140, 100),
+        data: {
+          id: nodeId,
+          type: 'image',
+          content: '',
+          title: asset.name,
+          imageUrl: asset.url,
+          imageCaption: asset.name,
+          createdAt: Date.now(),
+        },
+      };
+      return [...currentNodes, newNode];
+    });
+  }, [getCenteredNodePosition, setNodes]);
+
+  const handleDownloadAllImages = useCallback(() => {
+    if (mediaAssets.length === 0) {
+      alert('配图文件夹中现在没有图片哦！');
+      return;
+    }
+
+    mediaAssets.forEach((asset, idx) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = asset.url;
+        let extension = 'png';
+        if (asset.url.startsWith('data:image/jpeg') || asset.url.startsWith('data:image/jpg')) extension = 'jpg';
+        else if (asset.url.startsWith('data:image/webp')) extension = 'webp';
+        else if (asset.url.startsWith('data:image/gif')) extension = 'gif';
+
+        link.download = `${asset.name}.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, idx * 250);
+    });
+  }, [mediaAssets]);
+
+  const handleAssembleDocument = useCallback(() => {
+    if (nodes.length === 0) {
+      alert('画布中没有节点，无法生成！');
+      return;
+    }
+
+    if (!nodes.some((node) => node.type === 'text' || node.type === 'idea')) {
+      alert('画布中没有带有文本的内容或灵感卡片，请点击左上角切片或手动添加卡片！');
+      return;
+    }
+
+    setAssembledDocText(assembleDocumentFromGraph(nodes, edges));
+    setIsAssemblyModalOpen(true);
+    setIsDrawerOpen(false);
+  }, [nodes, edges]);
+
+  const handleApplyAssembledToMainDoc = () => {
+    onUpdateMainDocument(assembledTextToHtml(assembledDocText));
+    setIsAssemblyModalOpen(false);
+    alert('成功反向还原文档至左侧文本编辑器！');
+  };
+
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(assembledDocText);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const nodeActionContextValue = useMemo(() => ({
+    onDeleteNode: handleDeleteNode,
+    onUpdateContent: handleUpdateNodeContent,
+    editingId,
+    setEditingId,
+  }), [handleDeleteNode, handleUpdateNodeContent, editingId]);
+
+  return (
+    <div className="h-full w-full bg-neutral-50 relative overflow-hidden flex flex-col">
+      <Header
+        onLoadPreset={onLoadPreset}
+        onExportState={onExportState}
+        onImportState={onImportState}
+        onResetWorkspace={onResetWorkspace}
+        menuOpen={isMenuOpen}
+        onMenuOpenChange={(open) => {
+          setIsMenuOpen(open);
+          if (open) {
+            setIsDrawerOpen(false);
+            setIsMediaLibraryOpen(false);
+          }
+        }}
+        rightActions={
+          <CanvasToolbar
+            isDrawerOpen={isDrawerOpen}
+            isMediaLibraryOpen={isMediaLibraryOpen}
+            mediaAssetCount={mediaAssets.length}
+            onToggleMediaLibrary={() => {
+              const nextState = !isMediaLibraryOpen;
+              setIsMediaLibraryOpen(nextState);
+              setIsDrawerOpen(false);
+              setIsMenuOpen(false);
+            }}
+            onToggleDrawer={() => {
+              const nextState = !isDrawerOpen;
+              setIsDrawerOpen(nextState);
+              if (nextState) {
+                setIsMenuOpen(false);
+                setIsMediaLibraryOpen(false);
+              }
+            }}
+            onAddNode={handleAddNewNode}
+            onAutoLayout={() => {
+              handleAutoLayout();
+              setIsDrawerOpen(false);
+            }}
+            onAssembleDocument={handleAssembleDocument}
+            onRequestClearCanvas={() => {
+              setShowClearConfirmModal(true);
+              setIsDrawerOpen(false);
+            }}
+          />
+        }
+      />
+
+      <EdgeRelationshipEditor
+        selectedEdge={selectedEdge}
+        shortcutTags={shortcutTags}
+        customEdgeRelation={customEdgeRelation}
+        onCustomEdgeRelationChange={setCustomEdgeRelation}
+        onShortcutTagsChange={setShortcutTags}
+        onSave={handleUpdateEdgeRelationship}
+        onDelete={handleDeleteSelectedEdge}
+        onClose={() => setSelectedEdge(null)}
+      />
+
+      <div className="flex-1 w-full h-full relative" id="reactflow-container" onContextMenu={(e) => e.preventDefault()}>
+        <NodeActionContext.Provider value={nodeActionContextValue}>
+          <ReactFlow
+            nodes={displayNodes}
+            edges={displayEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            onNodeDragStop={handleNodeDragStop}
+            onEdgeClick={(event, edge) => setSelectedEdge(edge)}
+            panOnDrag={[2]}
+            onPaneClick={() => setEditingId(null)}
+            onPaneContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
+            onNodeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
+            onEdgeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
+            fitView
+            className="bg-neutral-50"
+          >
+            <Background color="#ccc" gap={16} size={1} />
+            <Controls
+              position="bottom-right"
+              style={{
+                bottom: 115,
+                right: 16,
+                margin: 0,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+                border: '1px solid #e0e0e0',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                padding: '2px',
+              }}
+              showInteractive={false}
+            />
+            <MiniMap
+              nodeColor={(node) => {
+                if (node.type === 'text') return '#f5f5f5';
+                if (node.type === 'image') return '#e5e5e5';
+                if (node.type === 'idea') return '#d4d4d4';
+                if (node.type === 'timeline') return '#171717';
+                return '#fff';
+              }}
+              style={{
+                borderRadius: '8px',
+                border: '1px solid #e5e5e5',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                width: 120,
+                height: 90,
+                margin: 0,
+                right: 16,
+                bottom: 16,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+              }}
+              position="bottom-right"
+            />
+          </ReactFlow>
+        </NodeActionContext.Provider>
+
+        {showHints && <CanvasHintBubble onClose={() => setShowHints(false)} />}
+      </div>
+
+      <MediaLibraryDrawer
+        open={isMediaLibraryOpen}
+        assets={mediaAssets}
+        fileInputRef={fileFolderInputRef}
+        onClose={() => setIsMediaLibraryOpen(false)}
+        onUpload={handleBatchImageUpload}
+        onInsertAsset={handleInsertAssetNode}
+        onDeleteAsset={(assetId) => setMediaAssets((currentAssets) => currentAssets.filter((asset) => asset.id !== assetId))}
+        onDownloadAll={handleDownloadAllImages}
+      />
+
+      <AssemblyPreviewModal
+        open={isAssemblyModalOpen}
+        assembledDocText={assembledDocText}
+        isCopied={isCopied}
+        onClose={() => setIsAssemblyModalOpen(false)}
+        onCopy={handleCopyToClipboard}
+        onApply={handleApplyAssembledToMainDoc}
+      />
+
+      <ClearCanvasConfirmModal
+        open={showClearConfirmModal}
+        onCancel={() => setShowClearConfirmModal(false)}
+        onConfirm={() => {
+          setNodes([]);
+          setEdges([]);
+          setShowClearConfirmModal(false);
+        }}
+      />
+    </div>
+  );
+}

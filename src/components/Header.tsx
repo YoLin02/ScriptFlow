@@ -1,0 +1,240 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useRef, useEffect, memo } from 'react';
+import { 
+  Feather, MoreHorizontal, Download, Upload, Trash2, HelpCircle, 
+  Compass, Layers, Lightbulb, FileText, ChevronDown, Check
+} from 'lucide-react';
+import { WorkspaceSaveState } from '../types';
+
+interface HeaderProps {
+  onLoadPreset: (presetName: string) => void;
+  onExportState: () => void;
+  onImportState: (state: WorkspaceSaveState) => void;
+  onResetWorkspace: () => void;
+  rightActions?: React.ReactNode;
+  menuOpen?: boolean;
+  onMenuOpenChange?: (open: boolean) => void;
+}
+
+const Header = memo(function Header({ 
+  onLoadPreset, 
+  onExportState, 
+  onImportState, 
+  onResetWorkspace,
+  rightActions,
+  menuOpen,
+  onMenuOpenChange
+}: HeaderProps) {
+  const [localShowMenu, setLocalShowMenu] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
+
+  const isMenuOpen = menuOpen !== undefined ? menuOpen : localShowMenu;
+  const setIsMenuOpen = onMenuOpenChange !== undefined ? onMenuOpenChange : setLocalShowMenu;
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+      if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
+        const clickedHelpButton = event.target instanceof Element && event.target.closest('button') && (event.target.textContent?.includes('指南') || event.target.closest('[title="协同书写指南"]'));
+        if (!clickedHelpButton) {
+          setShowHelp(false);
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [setIsMenuOpen]);
+
+  const handleFileImportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const stateObj = JSON.parse(event.target?.result as string);
+          if (stateObj.mainDocumentHtml !== undefined && Array.isArray(stateObj.nodes)) {
+            onImportState(stateObj);
+            alert('工作空间导入成功！');
+          } else {
+            alert('无效的文件格式。请导入由本应用导出的 JSON 文件。');
+          }
+        } catch (err) {
+          alert('解析导入文件失败，可能不是标准的 JSON。');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSelectPreset = (presetName: string) => {
+    onLoadPreset(presetName);
+    setIsMenuOpen(false);
+  };
+
+  const handleImportClick = () => {
+    setIsMenuOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleExportClick = () => {
+    setIsMenuOpen(false);
+    onExportState();
+  };
+
+  const handleResetClick = () => {
+    setIsMenuOpen(false);
+    onResetWorkspace();
+  };
+
+  const handleHelpClick = () => {
+    setIsMenuOpen(false);
+    setShowHelp(true);
+  };
+
+  return (
+    <header className="absolute top-4 left-4 right-4 bg-transparent select-none z-30 flex items-center justify-between pointer-events-none">
+      {/* Brand Identity / Title info */}
+      <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur-md border border-neutral-200/80 shadow-md py-1 px-3 rounded-lg pointer-events-auto">
+        <div className="w-5 h-5 rounded bg-neutral-900 flex items-center justify-center text-white">
+          <Feather className="w-3 h-3 stroke-[2]" />
+        </div>
+        <div>
+          <h1 className="text-xs font-semibold tracking-tight text-neutral-950 flex items-center gap-1.5">
+            <span>Visual Document Flow</span>
+            <span className="text-[8px] font-normal font-mono bg-neutral-100 text-neutral-500 py-0.5 px-1 rounded-xs">
+              v1.0
+            </span>
+          </h1>
+        </div>
+      </div>
+
+      {/* Extreme Minimalist Controls: Right actions and the shadow-free '...' menu */}
+      <div className="flex items-center gap-1.5 pointer-events-auto bg-white/70 backdrop-blur-md border border-neutral-200/50 shadow-md py-1 px-1.5 rounded-lg" ref={menuRef}>
+        {rightActions}
+        {rightActions && <div className="h-4 w-px bg-neutral-200/60 mx-0.5" />}
+        
+        <div className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className={`flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-150 bg-transparent transition-all cursor-pointer ${isMenuOpen ? 'text-neutral-900 bg-neutral-100' : ''}`}
+            title="功能菜单"
+            id="header-menu-button"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+
+          {/* Dropdown Menu Container */}
+          {isMenuOpen && (
+            <div className="absolute right-0 top-[34px] w-56 bg-white/95 backdrop-blur-md border border-neutral-200 shadow-xl rounded-lg py-1.5 z-50 text-neutral-700 animate-in fade-in slide-in-from-top-1">
+            
+            {/* Input/Output Data segment */}
+            <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
+              工作区备份管理
+            </div>
+            <button
+              onClick={handleImportClick}
+              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+            >
+              <Upload className="w-3.5 h-3.5 text-neutral-400" />
+              <span>导入工作区数据 (.json)</span>
+            </button>
+            <button
+              onClick={handleExportClick}
+              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+            >
+              <Download className="w-3.5 h-3.5 text-neutral-400" />
+              <span>导出工作区备份 (.json)</span>
+            </button>
+
+            <div className="h-px bg-neutral-100 my-1.5" />
+
+            {/* Help & System segment */}
+            <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
+              系统工具
+            </div>
+            <button
+              onClick={handleHelpClick}
+              className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-neutral-400" />
+              <span>协同书写指南</span>
+            </button>
+          </div>
+        )}
+        </div>
+      </div>
+
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileImportChange} 
+        accept=".json" 
+        className="hidden" 
+      />
+
+      {/* Guidelines Modal Popover overlay */}
+      {showHelp && (
+        <div ref={helpRef} className="absolute right-6 top-[54px] w-[340px] bg-white border border-neutral-250/90 shadow-2xl rounded-lg p-5 z-50 text-neutral-700 text-xs text-left animate-in fade-in slide-in-from-top-1 pointer-events-auto">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Compass className="w-4 h-4 text-neutral-800" />
+            <h4 className="font-semibold text-neutral-900">非线性写作协同工作指南</h4>
+          </div>
+          <div className="space-y-2 text-neutral-600 leading-normal">
+            <p>
+              本应用是一个支持非线性结构布局的文本写作大纲白板。你可以将左侧结构严谨的长文拆解或合并到电白板自由排布。
+            </p>
+            <div className="border-t border-neutral-100 pt-2.5 space-y-2">
+              <div className="flex items-start gap-1.5">
+                <span className="text-neutral-800 font-semibold font-mono">1.</span>
+                <p>
+                  <strong>主文档书写</strong>：在左侧编辑器中构思或粘贴你的基础文章草稿，支持各级大纲标题、加粗、引用与列表。
+                </p>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="text-neutral-800 font-semibold font-mono">2.</span>
+                <p>
+                  <strong>卡片切片化 (段落一键切片)</strong>：鼠标选中左侧某些文字点击 <strong>[选取切片]</strong>，或者在下方段落管理器中点击 ➔ 按钮，皆可快速生成独立的画布卡片节点。
+                </p>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="text-neutral-800 font-semibold font-mono">3.</span>
+                <p>
+                  <strong>逻辑线条联结</strong>：双击卡片、手动拖拽圆点，可设定“承接”、“对比冲突”、“分支并行”等关系图线。
+                </p>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="text-neutral-800 font-semibold font-mono">4.</span>
+                <p>
+                  <strong>逆向逆推还原</strong>：点击画布右上角 <strong>[逆向重组主文档]</strong> 按钮，算法将自动依照拓扑关联，反向合并并一键同步覆盖到主文字区域中！
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-neutral-100 flex items-center justify-between text-neutral-400">
+              <span>视觉风格：极简白色 / 灰色</span>
+              <button 
+                onClick={() => setShowHelp(false)}
+                className="text-neutral-800 hover:underline cursor-pointer font-semibold"
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+});
+
+Header.displayName = 'Header';
+
+export default Header;

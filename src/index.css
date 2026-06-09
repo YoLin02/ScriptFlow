@@ -1,0 +1,196 @@
+@import "@xyflow/react/dist/style.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    background-color: #fafafa;
+    color: #171717;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom scrollbars for full minimalist appeal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dbdbdb;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b5b5b5;
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 400px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.ProseMirror p {
+  margin-bottom: 0.875rem;
+  color: #262626;
+}
+
+.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror h1 {
+  font-size: 1.625rem;
+  font-weight: 600;
+  color: #0a0a0a;
+  margin-top: 1.75rem;
+  margin-bottom: 0.875rem;
+  letter-spacing: -0.02em;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #0a0a0a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.ProseMirror h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #1f1f1f;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror blockquote {
+  border-left: 2px solid #e5e5e5;
+  padding-left: 1.125rem;
+  color: #737373;
+  font-style: italic;
+  margin: 1.25rem 0;
+}
+
+.ProseMirror ul, .ProseMirror ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.375rem;
+}
+
+.ProseMirror strong {
+  font-weight: 600;
+  color: #0a0a0a;
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+.ProseMirror p.is-empty::before {
+  color: #a3a3a3;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* React Flow custom CSS overrides to maintain our deep premium aesthetic */
+.react-flow__pane {
+  background-color: #fafafa;
+}
+
+.react-flow__handle {
+  width: 7px;
+  height: 7px;
+  background-color: #737373 !important;
+  border: 1.5px solid #ffffff !important;
+  border-radius: 50%;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.3);
+  background-color: #000000 !important;
+}
+
+.react-flow__connection-path {
+  stroke: #737373;
+  stroke-dasharray: 4;
+  animation: connection-flow 0.5s linear infinite;
+}
+
+@keyframes connection-flow {
+  from {
+    stroke-dashoffset: 8;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__controls {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+  border: 1px solid #f5f5f5 !important;
+  border-radius: 6px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f5f5f5 !important;
+  fill: #737373 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #fafafa !important;
+  fill: #171717 !important;
+}
+
+.react-flow__edge-path {
+  stroke-width: 1.5px;
+  transition: stroke-width 0.15s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 2.2px;
+  stroke: #171717 !important;
+}
+
+.react-flow__edge-textbg {
+  fill: transparent !important;
+  fill-opacity: 0 !important;
+}
+
+.react-flow__edge-text {
+  font-weight: 750 !important;
+  fill: #171717 !important;
+  font-size: 13px !important;
+  paint-order: stroke fill;
+  stroke: #ffffff !important;
+  stroke-width: 4px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}

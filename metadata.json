@@ -1,0 +1,5 @@
+{
+  "name": "Visual Text Flow",
+  "description": "A high-end, minimalist non-linear document workspace combining structured Tiptap text editing and visual React Flow canvas mapping.",
+  "requestFramePermissions": []
+}
