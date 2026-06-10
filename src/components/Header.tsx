@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { 
-  MoreHorizontal, Download, Upload, HelpCircle, Compass
+  BookOpen, Download, HelpCircle, Compass, MoreHorizontal, Rows3, Trash2, Upload
 } from 'lucide-react';
 import { WorkspaceSaveState } from '../types';
 import { useFeedback } from './feedback/FeedbackProvider';
@@ -20,6 +20,9 @@ interface HeaderProps {
   rightActions?: React.ReactNode;
   menuOpen?: boolean;
   onMenuOpenChange?: (open: boolean) => void;
+  onAutoLayout?: () => void;
+  onAssembleDocument?: () => void;
+  onRequestClearCanvas?: () => void;
 }
 
 const Header = memo(function Header({ 
@@ -30,7 +33,10 @@ const Header = memo(function Header({
   leadingActions,
   rightActions,
   menuOpen,
-  onMenuOpenChange
+  onMenuOpenChange,
+  onAutoLayout,
+  onAssembleDocument,
+  onRequestClearCanvas
 }: HeaderProps) {
   const { toast } = useFeedback();
   const [localShowMenu, setLocalShowMenu] = useState(false);
@@ -105,6 +111,23 @@ const Header = memo(function Header({
     setShowHelp(true);
   };
 
+  const handleAutoLayoutClick = () => {
+    setIsMenuOpen(false);
+    onAutoLayout?.();
+  };
+
+  const handleAssembleDocumentClick = () => {
+    setIsMenuOpen(false);
+    onAssembleDocument?.();
+  };
+
+  const handleClearCanvasClick = () => {
+    setIsMenuOpen(false);
+    onRequestClearCanvas?.();
+  };
+
+  const hasCanvasTools = !!(onAutoLayout || onAssembleDocument || onRequestClearCanvas);
+
   return (
     <header className="absolute top-4 left-4 right-4 bg-transparent select-none z-30 flex items-center justify-between pointer-events-none">
       {/* Brand Identity / Title info */}
@@ -159,6 +182,43 @@ const Header = memo(function Header({
               </button>
 
               <div className="h-px bg-neutral-100 my-1.5" />
+
+              {hasCanvasTools && (
+                <>
+                  <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
+                    画布工具
+                  </div>
+                  {onAutoLayout && (
+                    <button
+                      onClick={handleAutoLayoutClick}
+                      className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+                    >
+                      <Rows3 className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>整理画布</span>
+                    </button>
+                  )}
+                  {onAssembleDocument && (
+                    <button
+                      onClick={handleAssembleDocumentClick}
+                      className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>还原主文档</span>
+                    </button>
+                  )}
+                  {onRequestClearCanvas && (
+                    <button
+                      onClick={handleClearCanvasClick}
+                      className="w-full px-3 py-1.5 text-xs text-red-650 hover:bg-red-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <span>清空画布</span>
+                    </button>
+                  )}
+
+                  <div className="h-px bg-neutral-100 my-1.5" />
+                </>
+              )}
 
               {/* Help & System segment */}
               <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">

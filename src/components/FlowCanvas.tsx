@@ -14,6 +14,7 @@ import {
   Connection,
   Edge,
   MarkerType,
+  PanOnScrollMode,
   useReactFlow,
 } from '@xyflow/react';
 
@@ -205,6 +206,16 @@ export default function FlowCanvas({
           stroke: isLinkActive ? '#171717' : '#e5e5e5',
           strokeWidth: isLinkActive ? 2.5 : 1.0,
           transition: 'opacity 0.2s ease, stroke 0.2s ease',
+        },
+        labelStyle: {
+          ...edge.labelStyle,
+          opacity: isLinkActive ? 1 : 0.08,
+          transition: 'opacity 0.2s ease',
+        },
+        labelBgStyle: {
+          ...edge.labelBgStyle,
+          opacity: isLinkActive ? 1 : 0,
+          transition: 'opacity 0.2s ease',
         },
       };
     });
@@ -618,40 +629,9 @@ export default function FlowCanvas({
             onRedo={onRedo}
           />
         }
-        rightActions={
-          <CanvasToolbar
-            isDrawerOpen={isDrawerOpen}
-            isMediaLibraryOpen={isMediaLibraryOpen}
-            mediaAssetCount={mediaAssets.length}
-            saveStatus={saveStatus}
-            lastSavedAt={lastSavedAt}
-            saveError={saveError}
-            onToggleMediaLibrary={() => {
-              const nextState = !isMediaLibraryOpen;
-              setIsMediaLibraryOpen(nextState);
-              setIsDrawerOpen(false);
-              setIsMenuOpen(false);
-            }}
-            onToggleDrawer={() => {
-              const nextState = !isDrawerOpen;
-              setIsDrawerOpen(nextState);
-              if (nextState) {
-                setIsMenuOpen(false);
-                setIsMediaLibraryOpen(false);
-              }
-            }}
-            onAddNode={handleAddNewNode}
-            onAutoLayout={() => {
-              handleAutoLayout();
-              setIsDrawerOpen(false);
-            }}
-            onAssembleDocument={handleAssembleDocument}
-            onRequestClearCanvas={() => {
-              setShowClearConfirmModal(true);
-              setIsDrawerOpen(false);
-            }}
-          />
-        }
+        onAutoLayout={handleAutoLayout}
+        onAssembleDocument={handleAssembleDocument}
+        onRequestClearCanvas={() => setShowClearConfirmModal(true)}
       />
 
       <EdgeRelationshipEditor
@@ -677,6 +657,10 @@ export default function FlowCanvas({
             onNodeDragStop={handleNodeDragStop}
             onEdgeClick={(event, edge) => setSelectedEdge(edge)}
             panOnDrag={[2]}
+            panOnScroll
+            panOnScrollMode={PanOnScrollMode.Vertical}
+            zoomOnScroll={false}
+            zoomActivationKeyCode="Control"
             onPaneClick={() => setEditingId(null)}
             onPaneContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
             onNodeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
@@ -729,6 +713,30 @@ export default function FlowCanvas({
         </NodeActionContext.Provider>
 
         {showHints && <CanvasHintBubble onClose={() => setShowHints(false)} />}
+
+        <CanvasToolbar
+          isDrawerOpen={isDrawerOpen}
+          isMediaLibraryOpen={isMediaLibraryOpen}
+          mediaAssetCount={mediaAssets.length}
+          saveStatus={saveStatus}
+          lastSavedAt={lastSavedAt}
+          saveError={saveError}
+          onToggleMediaLibrary={() => {
+            const nextState = !isMediaLibraryOpen;
+            setIsMediaLibraryOpen(nextState);
+            setIsDrawerOpen(false);
+            setIsMenuOpen(false);
+          }}
+          onToggleDrawer={() => {
+            const nextState = !isDrawerOpen;
+            setIsDrawerOpen(nextState);
+            if (nextState) {
+              setIsMenuOpen(false);
+              setIsMediaLibraryOpen(false);
+            }
+          }}
+          onAddNode={handleAddNewNode}
+        />
       </div>
 
       <MediaLibraryDrawer

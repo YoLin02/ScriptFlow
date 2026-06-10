@@ -32,6 +32,7 @@ export default function App() {
   // Responsive mode select: 'split' | 'editor' | 'canvas' 
   const [activeTab, setActiveTab] = useState<'editor' | 'canvas' | 'split'>('split');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isEditorOutlineOpen, setIsEditorOutlineOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -308,6 +309,8 @@ export default function App() {
     setMainDocHtml(newHtml);
   }, []);
 
+  const splitEditorWidth = isEditorOutlineOpen ? 'min(732px, 72vw)' : 'min(480px, 42vw)';
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-50 font-sans">
       {/* Main responsive Split view container */}
@@ -324,6 +327,7 @@ export default function App() {
                   ? 'hidden md:block md:w-0 md:border-r-0' 
                   : 'w-full md:w-[400px] lg:w-[480px]'
           }`}
+          style={!isSidebarCollapsed && activeTab === 'split' ? { width: splitEditorWidth } : undefined}
         >
           {/* Inner content container to safely enforce overflow-hidden */}
           <div className="w-full h-full overflow-hidden absolute inset-0">
@@ -331,6 +335,8 @@ export default function App() {
               content={mainDocHtml} 
               onChange={handleUpdateMainDoc}
               onExtractNode={handleExtractNode}
+              isCollapsed={isSidebarCollapsed}
+              onOutlineOpenChange={setIsEditorOutlineOpen}
             />
           </div>
         </div>
@@ -344,8 +350,9 @@ export default function App() {
                 ? 'left-[100%] -translate-x-full'
                 : activeTab === 'canvas'
                   ? 'left-0'
-                  : 'left-[400px] lg:left-[480px]'
+                  : ''
           }`}
+          style={!isSidebarCollapsed && activeTab === 'split' ? { left: splitEditorWidth } : undefined}
         >
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
