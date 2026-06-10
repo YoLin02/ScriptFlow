@@ -26,10 +26,10 @@ export default function CanvasToolbar({
   onAddNode,
 }: CanvasToolbarProps) {
   return (
-    <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
+    <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 cursor-default flex-col items-center gap-2">
       <SaveStatusText status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
 
-      <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/90 px-2 py-2 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
+      <div className="pointer-events-auto flex cursor-default items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/90 px-2 py-2 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
         <ToolbarIconButton title="文本" onClick={() => onAddNode('text')}>
           <Type className="h-4 w-4" />
         </ToolbarIconButton>
@@ -65,7 +65,7 @@ export default function CanvasToolbar({
       </div>
 
       {isDrawerOpen && (
-        <div className="pointer-events-auto rounded-xl border border-neutral-200/80 bg-white/95 px-3 py-2 text-[11px] text-neutral-400 shadow-lg shadow-neutral-900/10 backdrop-blur-md">
+        <div className="pointer-events-auto cursor-default rounded-xl border border-neutral-200/80 bg-white/95 px-3 py-2 text-[11px] text-neutral-400 shadow-lg shadow-neutral-900/10 backdrop-blur-md">
           更多工具暂未配置
         </div>
       )}
@@ -89,7 +89,7 @@ function ToolbarIconButton({
   return (
     <button
       onClick={onClick}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-150 ${
+      className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 ${
         active
           ? 'border-neutral-900 bg-neutral-900 text-white shadow-sm'
           : danger

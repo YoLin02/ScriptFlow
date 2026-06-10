@@ -67,6 +67,11 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCa
           ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800' 
           : 'shadow-sm border-neutral-300/80 hover:border-neutral-400'
       }`}
+      style={{
+        width: data.width ? `${data.width}px` : undefined,
+        minHeight: data.height ? `${data.height}px` : undefined,
+        backgroundColor: data.color || undefined,
+      }}
     >
       <StandardHandles />
 
@@ -74,7 +79,7 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCa
       <div className="flex items-center justify-between px-3.5 py-2">
         <div className="flex items-center gap-1 text-neutral-400">
           <Lightbulb className="w-3.5 h-3.5 text-neutral-500" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">脑洞 / 想法</span>
+          <span className="text-[10px] uppercase tracking-wider font-semibold">{data.status || '脑洞 / 想法'}</span>
         </div>
         <div className="flex gap-1">
           {isEditing ? (

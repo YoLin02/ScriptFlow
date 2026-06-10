@@ -15,6 +15,7 @@ import {
   Edge,
   MarkerType,
   PanOnScrollMode,
+  SelectionMode,
   useReactFlow,
 } from '@xyflow/react';
 
@@ -34,11 +35,12 @@ import { dbGet, dbSet } from '../db';
 import { useFeedback } from './feedback/FeedbackProvider';
 import CanvasToolbar from './CanvasToolbar';
 import WorkspaceHistoryControls from './WorkspaceHistoryControls';
-import EdgeRelationshipEditor from './EdgeRelationshipEditor';
 import MediaLibraryDrawer from './MediaLibraryDrawer';
 import AssemblyPreviewModal from './AssemblyPreviewModal';
 import ClearCanvasConfirmModal from './ClearCanvasConfirmModal';
 import CanvasHintBubble from './CanvasHintBubble';
+import CanvasContextMenu from './CanvasContextMenu';
+import CanvasPropertiesPanel from './CanvasPropertiesPanel';
 import {
   DEFAULT_RELATION_TAGS,
   assembleDocumentFromGraph,
@@ -47,6 +49,18 @@ import {
   getConnectedNodeIds,
   getEdgePresentation,
 } from './flowCanvasUtils';
+
+interface CanvasContextMenuState {
+  x: number;
+  y: number;
+  flowX: number;
+  flowY: number;
+}
+
+interface ClipboardState {
+  nodes: WorkspaceNode[];
+  edges: Edge[];
+}
 
 interface FlowCanvasProps {
   nodes: WorkspaceNode[];
@@ -115,8 +129,36 @@ export default function FlowCanvas({
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [mediaAssets, setMediaAssets] = useState<CanvasMediaAsset[]>([]);
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+  const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null);
+  const [clipboard, setClipboard] = useState<ClipboardState | null>(null);
+  const [isPanningByPointer, setIsPanningByPointer] = useState(false);
 
   const fileFolderInputRef = useRef<HTMLInputElement>(null);
+  const rightPointerRef = useRef({ active: false, startX: 0, startY: 0, moved: false });
+
+  const beginPointerPan = useCallback((clientX: number, clientY: number) => {
+    rightPointerRef.current = { active: true, startX: clientX, startY: clientY, moved: false };
+    setIsPanningByPointer(true);
+  }, []);
+
+  const updatePointerPan = useCallback((clientX: number, clientY: number) => {
+    const pointerState = rightPointerRef.current;
+    if (!pointerState.active) return;
+
+    const distance = Math.hypot(clientX - pointerState.startX, clientY - pointerState.startY);
+    if (distance > 6) {
+      pointerState.moved = true;
+    }
+  }, []);
+
+  const endPointerPan = useCallback(() => {
+    setIsPanningByPointer(false);
+  }, []);
+
+  const resetPointerPan = useCallback(() => {
+    rightPointerRef.current = { active: false, startX: 0, startY: 0, moved: false };
+    setIsPanningByPointer(false);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('custom_relation_tags', JSON.stringify(shortcutTags));
@@ -149,6 +191,16 @@ export default function FlowCanvas({
     });
   }, [mediaAssets, isAssetsLoaded]);
 
+  useEffect(() => {
+    const closeContextMenu = () => setContextMenu(null);
+    window.addEventListener('click', closeContextMenu);
+    window.addEventListener('keydown', closeContextMenu);
+    return () => {
+      window.removeEventListener('click', closeContextMenu);
+      window.removeEventListener('keydown', closeContextMenu);
+    };
+  }, []);
+
   const nodeTypes = useMemo(() => ({
     text: TextNode,
     image: ImageNode,
@@ -160,6 +212,11 @@ export default function FlowCanvas({
   const activeTimelineNode = useMemo(
     () => nodes.find((node) => node.type === 'timeline' && node.selected),
     [nodes],
+  );
+  const selectedNodes = useMemo(() => nodes.filter((node) => node.selected), [nodes]);
+  const selectedNodesForProperties = useMemo(
+    () => selectedNodes.some((node) => node.type === 'timeline') ? [] : selectedNodes,
+    [selectedNodes],
   );
   const activeTickDetails = useMemo(() => getActiveTickDetails(nodes), [nodes]);
   const isFilterActive = !!(activeTimelineNode || activeTickDetails);
@@ -245,6 +302,14 @@ export default function FlowCanvas({
         y: 100 + Math.random() * 150,
       };
     }
+  }, [screenToFlowPosition]);
+
+  const openCanvasContextMenu = useCallback((clientX: number, clientY: number) => {
+    setEditingId(null);
+    setSelectedEdge(null);
+    setIsPanningByPointer(false);
+    const flowPosition = screenToFlowPosition({ x: clientX, y: clientY });
+    setContextMenu({ x: clientX, y: clientY, flowX: flowPosition.x, flowY: flowPosition.y });
   }, [screenToFlowPosition]);
 
   const handleNodeDragStop = useCallback((event: any, node: WorkspaceNode) => {
@@ -599,6 +664,165 @@ export default function FlowCanvas({
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleCopySelectedNodes = useCallback(() => {
+    const selectedIds = new Set(selectedNodes.map((node) => node.id));
+    if (selectedIds.size === 0) return;
+
+    setClipboard({
+      nodes: selectedNodes.map((node) => ({ ...node, selected: false })),
+      edges: edges.filter((edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target)),
+    });
+    setContextMenu(null);
+  }, [selectedNodes, edges]);
+
+  const handlePasteNodes = useCallback(() => {
+    if (!clipboard || !contextMenu) return;
+
+    const minX = Math.min(...clipboard.nodes.map((node) => node.position.x));
+    const minY = Math.min(...clipboard.nodes.map((node) => node.position.y));
+    const idMap = new Map<string, string>();
+    const stamp = Date.now();
+
+    const pastedNodes = clipboard.nodes.map((node, index) => {
+      const newId = `node-${stamp}-${index}-${Math.random().toString(36).slice(2, 5)}`;
+      idMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        selected: true,
+        position: {
+          x: contextMenu.flowX + (node.position.x - minX),
+          y: contextMenu.flowY + (node.position.y - minY),
+        },
+        data: {
+          ...node.data,
+          id: newId,
+          createdAt: Date.now(),
+        },
+      } as WorkspaceNode;
+    });
+
+    const pastedEdges = clipboard.edges.flatMap((edge, index) => {
+      const source = idMap.get(edge.source);
+      const target = idMap.get(edge.target);
+      if (!source || !target) return [];
+      return [{
+        ...edge,
+        id: `e-${stamp}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+        source,
+        target,
+        selected: false,
+      }];
+    });
+
+    setNodes((currentNodes) => [
+      ...currentNodes.map((node) => ({ ...node, selected: false })),
+      ...pastedNodes,
+    ]);
+    setEdges((currentEdges) => [...currentEdges.map((edge) => ({ ...edge, selected: false })), ...pastedEdges]);
+    setSelectedEdge(null);
+    setContextMenu(null);
+  }, [clipboard, contextMenu, setNodes, setEdges]);
+
+  const handleDeleteSelectedNodes = useCallback(() => {
+    const selectedIds = new Set(selectedNodes.map((node) => node.id));
+    if (selectedIds.size === 0) return;
+
+    setNodes((currentNodes) => currentNodes.filter((node) => !selectedIds.has(node.id)));
+    setEdges((currentEdges) => currentEdges.filter((edge) => !selectedIds.has(edge.source) && !selectedIds.has(edge.target)));
+    setContextMenu(null);
+  }, [selectedNodes, setNodes, setEdges]);
+
+  const alignSelectedNodes = useCallback((axis: 'left' | 'top') => {
+    if (selectedNodes.length < 2) return;
+    const target = axis === 'left'
+      ? Math.min(...selectedNodes.map((node) => node.position.x))
+      : Math.min(...selectedNodes.map((node) => node.position.y));
+    const selectedIds = new Set(selectedNodes.map((node) => node.id));
+
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (!selectedIds.has(node.id)) return node;
+        return {
+          ...node,
+          position: axis === 'left'
+            ? { ...node.position, x: target }
+            : { ...node.position, y: target },
+        };
+      }),
+    );
+    setContextMenu(null);
+  }, [selectedNodes, setNodes]);
+
+  const distributeSelectedNodes = useCallback((axis: 'horizontal' | 'vertical') => {
+    if (selectedNodes.length < 3) return;
+    const sorted = [...selectedNodes].sort((a, b) =>
+      axis === 'horizontal' ? a.position.x - b.position.x : a.position.y - b.position.y,
+    );
+    const first = axis === 'horizontal' ? sorted[0].position.x : sorted[0].position.y;
+    const last = axis === 'horizontal'
+      ? sorted[sorted.length - 1].position.x
+      : sorted[sorted.length - 1].position.y;
+    const step = (last - first) / (sorted.length - 1);
+    const nextPositions = new Map(sorted.map((node, index) => [node.id, first + step * index]));
+
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const next = nextPositions.get(node.id);
+        if (next === undefined) return node;
+        return {
+          ...node,
+          position: axis === 'horizontal'
+            ? { ...node.position, x: next }
+            : { ...node.position, y: next },
+        };
+      }),
+    );
+    setContextMenu(null);
+  }, [selectedNodes, setNodes]);
+
+  const handleUpdateNodesFromPanel = useCallback((nodeIds: string[], patch: Partial<CanvasNodeData>) => {
+    const nodeIdSet = new Set(nodeIds);
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (!nodeIdSet.has(node.id)) return node;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            ...patch,
+          },
+        } as WorkspaceNode;
+      }),
+    );
+  }, [setNodes]);
+
+  const handleResizeNodesFromPanel = useCallback((nodeIds: string[], width?: number, height?: number) => {
+    const nodeIdSet = new Set(nodeIds);
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (!nodeIdSet.has(node.id)) return node;
+        return {
+          ...node,
+          width: width ?? node.width,
+          height: height ?? node.height,
+          data: {
+            ...node.data,
+            width: width ?? node.data.width,
+            height: height ?? node.data.height,
+          },
+        } as WorkspaceNode;
+      }),
+    );
+  }, [setNodes]);
+
+  const handleUpdateEdgeFromPanel = useCallback((edgeId: string, patch: Partial<Edge>) => {
+    setEdges((currentEdges) =>
+      currentEdges.map((edge) => edge.id === edgeId ? { ...edge, ...patch } : edge),
+    );
+    setSelectedEdge((currentEdge) => currentEdge?.id === edgeId ? { ...currentEdge, ...patch } : currentEdge);
+  }, [setEdges]);
+
   const nodeActionContextValue = useMemo(() => ({
     onDeleteNode: handleDeleteNode,
     onUpdateContent: handleUpdateNodeContent,
@@ -634,18 +858,38 @@ export default function FlowCanvas({
         onRequestClearCanvas={() => setShowClearConfirmModal(true)}
       />
 
-      <EdgeRelationshipEditor
-        selectedEdge={selectedEdge}
-        shortcutTags={shortcutTags}
-        customEdgeRelation={customEdgeRelation}
-        onCustomEdgeRelationChange={setCustomEdgeRelation}
-        onShortcutTagsChange={setShortcutTags}
-        onSave={handleUpdateEdgeRelationship}
-        onDelete={handleDeleteSelectedEdge}
-        onClose={() => setSelectedEdge(null)}
-      />
+      <div
+        className="flex-1 w-full h-full relative"
+        id="reactflow-container"
+        onPointerDownCapture={(event) => {
+          if (event.button === 1 || event.button === 2) {
+            beginPointerPan(event.clientX, event.clientY);
+          }
+        }}
+        onPointerMoveCapture={(event) => {
+          updatePointerPan(event.clientX, event.clientY);
+        }}
+        onPointerUpCapture={endPointerPan}
+        onPointerLeave={endPointerPan}
+        onPointerCancelCapture={resetPointerPan}
+        onContextMenu={(event) => {
+          const target = event.target as Element;
+          if (!target.closest('.react-flow')) return;
 
-      <div className="flex-1 w-full h-full relative" id="reactflow-container" onContextMenu={(e) => e.preventDefault()}>
+          event.preventDefault();
+          event.stopPropagation();
+
+          const wasRightDrag = rightPointerRef.current.moved;
+          resetPointerPan();
+
+          if (wasRightDrag) {
+            setContextMenu(null);
+            return;
+          }
+
+          openCanvasContextMenu(event.clientX, event.clientY);
+        }}
+      >
         <NodeActionContext.Provider value={nodeActionContextValue}>
           <ReactFlow
             nodes={displayNodes}
@@ -655,18 +899,65 @@ export default function FlowCanvas({
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             onNodeDragStop={handleNodeDragStop}
-            onEdgeClick={(event, edge) => setSelectedEdge(edge)}
-            panOnDrag={[2]}
+            onNodeClick={() => setSelectedEdge(null)}
+            onEdgeClick={(event, edge) => {
+              setSelectedEdge(edges.find((candidate) => candidate.id === edge.id) || edge);
+              setNodes((currentNodes) => currentNodes.map((node) => ({ ...node, selected: false })));
+            }}
+            panOnDrag={[1, 2]}
+            selectionOnDrag
+            selectionMode={SelectionMode.Partial}
             panOnScroll
             panOnScrollMode={PanOnScrollMode.Vertical}
             zoomOnScroll={false}
             zoomActivationKeyCode="Control"
-            onPaneClick={() => setEditingId(null)}
-            onPaneContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
-            onNodeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
+            onPaneClick={() => {
+              setEditingId(null);
+              setSelectedEdge(null);
+              setContextMenu(null);
+            }}
+            onPaneContextMenu={(e) => {
+              e.preventDefault();
+              if (rightPointerRef.current.moved) {
+                resetPointerPan();
+                setContextMenu(null);
+                return;
+              }
+              openCanvasContextMenu(e.clientX, e.clientY);
+            }}
+            onNodeContextMenu={(e, node) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (rightPointerRef.current.moved) {
+                resetPointerPan();
+                setContextMenu(null);
+                return;
+              }
+              setEditingId(null);
+              setSelectedEdge(null);
+              const isAlreadySelected = selectedNodes.some((selectedNode) => selectedNode.id === node.id);
+              if (!isAlreadySelected) {
+                setNodes((currentNodes) =>
+                  currentNodes.map((candidate) => ({ ...candidate, selected: candidate.id === node.id })),
+                );
+              }
+              const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+              setContextMenu({ x: e.clientX, y: e.clientY, flowX: flowPosition.x, flowY: flowPosition.y });
+            }}
             onEdgeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
             fitView
-            className="bg-white"
+            className={`bg-white ${isPanningByPointer ? 'is-pointer-panning' : ''}`}
+            onPointerDown={(event) => {
+              if (event.button === 1 || event.button === 2) {
+                beginPointerPan(event.clientX, event.clientY);
+              }
+            }}
+            onPointerMove={(event) => {
+              updatePointerPan(event.clientX, event.clientY);
+            }}
+            onPointerUp={endPointerPan}
+            onPointerLeave={endPointerPan}
+            onPointerCancel={resetPointerPan}
           >
             <Background
               variant={BackgroundVariant.Dots}
@@ -713,6 +1004,31 @@ export default function FlowCanvas({
         </NodeActionContext.Provider>
 
         {showHints && <CanvasHintBubble onClose={() => setShowHints(false)} />}
+
+        <CanvasPropertiesPanel
+          selectedNodes={selectedNodesForProperties}
+          selectedEdge={selectedNodes.length > 0 ? null : selectedEdge}
+          onUpdateNodes={handleUpdateNodesFromPanel}
+          onResizeNodes={handleResizeNodesFromPanel}
+          onUpdateEdge={handleUpdateEdgeFromPanel}
+        />
+
+        {contextMenu && (
+          <CanvasContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            selectedCount={selectedNodes.length}
+            canPaste={!!clipboard}
+            onCopy={handleCopySelectedNodes}
+            onPaste={handlePasteNodes}
+            onDelete={handleDeleteSelectedNodes}
+            onAlignLeft={() => alignSelectedNodes('left')}
+            onAlignTop={() => alignSelectedNodes('top')}
+            onDistributeHorizontal={() => distributeSelectedNodes('horizontal')}
+            onDistributeVertical={() => distributeSelectedNodes('vertical')}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
 
         <CanvasToolbar
           isDrawerOpen={isDrawerOpen}

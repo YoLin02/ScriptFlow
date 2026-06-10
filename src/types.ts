@@ -32,6 +32,10 @@ interface BaseCanvasNodeData extends Record<string, unknown> {
   content: string;
   title?: string;
   tags?: string[];
+  status?: string;
+  color?: string;
+  width?: number;
+  height?: number;
   imageUrl?: string;
   imageCaption?: string;
   createdAt: number;

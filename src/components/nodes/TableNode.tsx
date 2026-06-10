@@ -137,6 +137,11 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
           ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800'
           : 'shadow-sm border-neutral-200/85 hover:border-neutral-300'
       }`}
+      style={{
+        width: data.width ? `${data.width}px` : undefined,
+        minHeight: data.height ? `${data.height}px` : undefined,
+        backgroundColor: data.color || undefined,
+      }}
     >
       <StandardHandles />
 
@@ -249,7 +254,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
 
       {/* Node Footer */}
       <div className="px-3 py-1 bg-neutral-50/10 border-t border-neutral-50 text-[10px] text-neutral-400 flex justify-between items-center select-none rounded-b-lg">
-        <span>结构表格</span>
+        <span>{data.status || '结构表格'}</span>
         <span>ID: {id.slice(0, 6)}</span>
       </div>
     </div>

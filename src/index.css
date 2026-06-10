@@ -128,9 +128,32 @@
   box-shadow: 0 0 0 1.5px rgba(217, 119, 6, 0.55);
 }
 
+.panel-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.75rem;
+  color: #262626;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.panel-input:focus {
+  border-color: #737373;
+  box-shadow: 0 0 0 2px rgba(115, 115, 115, 0.12);
+}
+
 /* React Flow custom CSS overrides to maintain our deep premium aesthetic */
 .react-flow__pane {
   background-color: transparent;
+  cursor: default !important;
+}
+
+.react-flow.is-pointer-panning,
+.react-flow.is-pointer-panning .react-flow__pane {
+  cursor: grabbing !important;
 }
 
 .react-flow__handle {
@@ -187,8 +210,32 @@
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke-width: 2.2px;
-  stroke: #171717 !important;
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.45));
+}
+
+.react-flow__selection {
+  background: transparent !important;
+  border: 3px solid #2f80ed !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  cursor: default !important;
+}
+
+.react-flow__nodesselection-rect {
+  background: transparent !important;
+  border: none !important;
+  outline: 3px solid #2f80ed !important;
+  outline-offset: 10px;
+  box-shadow: none !important;
+  cursor: default !important;
+  pointer-events: none;
+}
+
+.react-flow__nodesselection {
+  background: transparent !important;
+  cursor: default !important;
+  pointer-events: none;
 }
 
 .react-flow__edge-textbg {
