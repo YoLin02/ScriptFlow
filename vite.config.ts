@@ -8,7 +8,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.
 
 function getDisplayVersion() {
   const githubTag = process.env.GITHUB_REF_TYPE === 'tag' ? process.env.GITHUB_REF_NAME : undefined;
-  const rawVersion = githubTag || packageJson.version || '0.0.0';
+  const rawVersion = githubTag || packageJson.version || '0.1.2';
   return rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`;
 }
 

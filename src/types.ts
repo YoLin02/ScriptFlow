@@ -14,8 +14,9 @@ export interface TableNodeDataValue {
 
 export interface TimelineTick {
   id: string;
-  time: string;
-  percent: number;
+  seconds: number;
+  time?: string;
+  percent?: number;
 }
 
 export interface TimelineTrackDataValue {

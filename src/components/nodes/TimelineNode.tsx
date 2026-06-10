@@ -1,5 +1,5 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { Clock, Plus, Trash2, X } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import type { TimelineCanvasNodeData, TimelineTrackDataValue } from '../../types';
@@ -7,26 +7,74 @@ export type { TimelineTick, TimelineTrackDataValue as TimelineTrackDataState } f
 
 const DEFAULT_TIMELINE_DATA: TimelineTrackDataValue = {
   ticks: [
-    { id: 'tick-0', time: '00:00', percent: 10 },
-    { id: 'tick-1', time: '10:00', percent: 50 },
-    { id: 'tick-2', time: '20:00', percent: 90 },
+    { id: 'tick-0', seconds: 0 },
+    { id: 'tick-1', seconds: 600 },
+    { id: 'tick-2', seconds: 1200 },
   ],
   width: 750,
   activeTickId: null,
   fontSize: 12,
 };
 
+const MIN_TICK_GAP_SECONDS = 1;
+
+function parseTimeToSeconds(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(':').map((part) => Number.parseInt(part, 10));
+  if (parts.some((part) => Number.isNaN(part))) return null;
+  if (parts.length === 1) return Math.max(0, parts[0]);
+  if (parts.length === 2) {
+    const minutes = parts[0] || 0;
+    const seconds = Math.max(0, Math.min(59, parts[1] || 0));
+    return Math.max(0, minutes * 60 + seconds);
+  }
+  const hours = parts[0] || 0;
+  const minutes = Math.max(0, Math.min(59, parts[1] || 0));
+  const seconds = Math.max(0, Math.min(59, parts[2] || 0));
+  return Math.max(0, hours * 3600 + minutes * 60 + seconds);
+}
+
+function formatSecondsToTime(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function getTickSeconds(tick: { seconds?: unknown; time?: unknown }, index: number) {
+  if (typeof tick.seconds === 'number' && Number.isFinite(tick.seconds)) {
+    return Math.max(0, Math.round(tick.seconds));
+  }
+  return parseTimeToSeconds(tick.time) ?? index * 600;
+}
+
+function normalizeTickOrder(ticks: TimelineTrackDataValue['ticks']) {
+  return [...ticks].sort((a, b) => a.seconds - b.seconds);
+}
+
+function getTickPercent(tickSeconds: number, ticks: TimelineTrackDataValue['ticks']) {
+  if (ticks.length <= 1) return 0;
+  const startSeconds = ticks[0].seconds;
+  const endSeconds = ticks[ticks.length - 1].seconds;
+  const duration = endSeconds - startSeconds;
+  if (duration <= 0) return 0;
+  return Math.max(0, Math.min(100, ((tickSeconds - startSeconds) / duration) * 100));
+}
+
 function normalizeTimelineData(value: unknown): TimelineTrackDataValue | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<TimelineTrackDataValue>;
   if (!Array.isArray(candidate.ticks)) return null;
+  const ticks = normalizeTickOrder(candidate.ticks.map((tick, index) => ({
+    id: String(tick.id || `tick-${index}`),
+    seconds: getTickSeconds(tick, index),
+  })));
 
   return {
-    ticks: candidate.ticks.map((tick, index) => ({
-      id: String(tick.id || `tick-${index}`),
-      time: String(tick.time || '00:00'),
-      percent: typeof tick.percent === 'number' ? tick.percent : Number(tick.percent) || 50,
-    })),
+    ticks: ticks.length >= 2 ? ticks : DEFAULT_TIMELINE_DATA.ticks,
     width: typeof candidate.width === 'number' ? candidate.width : 750,
     activeTickId: candidate.activeTickId ? String(candidate.activeTickId) : null,
     fontSize: typeof candidate.fontSize === 'number' ? candidate.fontSize : 12,
@@ -51,6 +99,7 @@ function getTimelineDataFromNode(data: TimelineCanvasNodeData): TimelineTrackDat
 
 export const TimelineNode = memo(({ id, data, selected }: { id: string; data: TimelineCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
+  const updateNodeInternals = useUpdateNodeInternals();
   const [state, setState] = useState<TimelineTrackDataValue>(() => getTimelineDataFromNode(data));
   const [clickX, setClickX] = useState<number | null>(null);
 
@@ -66,6 +115,10 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, state.ticks, state.width, updateNodeInternals]);
 
   // Sync state if outer representation changes safely
   useEffect(() => {
@@ -105,11 +158,92 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
   };
 
   const saveStateToParent = (updatedState: TimelineTrackDataValue) => {
-    onUpdateContent?.(id, '', `时间轴轨道`, undefined, undefined, { timelineData: updatedState });
+    onUpdateContent?.(id, '', `时间轴轨道`, undefined, undefined, {
+      timelineData: {
+        ...updatedState,
+        ticks: normalizeTickOrder(updatedState.ticks),
+      },
+    });
+  };
+
+  const updateTickSeconds = (tickId: string, nextSeconds: number) => {
+    const sortedTicks = normalizeTickOrder(state.ticks);
+    const tickIndex = sortedTicks.findIndex((tick) => tick.id === tickId);
+    if (tickIndex === -1) return;
+
+    const minSeconds = tickIndex === 0 ? 0 : sortedTicks[tickIndex - 1].seconds + MIN_TICK_GAP_SECONDS;
+    const maxSeconds = tickIndex === sortedTicks.length - 1
+      ? Math.max(minSeconds, nextSeconds)
+      : sortedTicks[tickIndex + 1].seconds - MIN_TICK_GAP_SECONDS;
+    const clampedSeconds = Math.max(minSeconds, Math.min(maxSeconds, Math.round(nextSeconds)));
+    const nextTicks = sortedTicks.map((tick) => tick.id === tickId ? { ...tick, seconds: clampedSeconds } : tick);
+    const nextState = { ...state, ticks: normalizeTickOrder(nextTicks) };
+    setState(nextState);
+    saveStateToParent(nextState);
+  };
+
+  const addTickInLargestGap = () => {
+    const sortedTicks = normalizeTickOrder(state.ticks);
+    if (sortedTicks.length < 2) return;
+
+    let gapStartIndex = 0;
+    let maxGap = -1;
+    for (let index = 0; index < sortedTicks.length - 1; index += 1) {
+      const gap = sortedTicks[index + 1].seconds - sortedTicks[index].seconds;
+      if (gap > maxGap) {
+        maxGap = gap;
+        gapStartIndex = index;
+      }
+    }
+
+    if (maxGap <= MIN_TICK_GAP_SECONDS) return;
+    const nextSeconds = Math.round((sortedTicks[gapStartIndex].seconds + sortedTicks[gapStartIndex + 1].seconds) / 2);
+    const nextTicks = normalizeTickOrder([
+      ...sortedTicks,
+      { id: `tick-${Date.now()}`, seconds: nextSeconds },
+    ]);
+    const nextState = { ...state, ticks: nextTicks };
+    setState(nextState);
+    saveStateToParent(nextState);
+  };
+
+  const addTickAtSeconds = (targetSeconds: number) => {
+    const sortedTicks = normalizeTickOrder(stateRef.current.ticks);
+    if (sortedTicks.length < 2) return;
+
+    const startSeconds = sortedTicks[0].seconds;
+    const endSeconds = sortedTicks[sortedTicks.length - 1].seconds;
+    if (endSeconds - startSeconds <= MIN_TICK_GAP_SECONDS * 2) return;
+
+    const clampedSeconds = Math.max(
+      startSeconds + MIN_TICK_GAP_SECONDS,
+      Math.min(endSeconds - MIN_TICK_GAP_SECONDS, Math.round(targetSeconds)),
+    );
+    const hasNearbyTick = sortedTicks.some((tick) => Math.abs(tick.seconds - clampedSeconds) < MIN_TICK_GAP_SECONDS);
+    if (hasNearbyTick) return;
+
+    const nextTick = { id: `tick-${Date.now()}`, seconds: clampedSeconds };
+    const nextState = { ...stateRef.current, ticks: normalizeTickOrder([...sortedTicks, nextTick]), activeTickId: nextTick.id };
+    setState(nextState);
+    saveStateToParent(nextState);
+  };
+
+  const handleRailClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!e.ctrlKey || !e.altKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const sortedTicks = normalizeTickOrder(stateRef.current.ticks);
+    if (sortedTicks.length < 2) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickPercent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const startSeconds = sortedTicks[0].seconds;
+    const endSeconds = sortedTicks[sortedTicks.length - 1].seconds;
+    addTickAtSeconds(startSeconds + (endSeconds - startSeconds) * clickPercent);
   };
 
   const getPopoverLeft = () => {
-    const popoverHalfWidth = 165; // 330px / 2
+    const popoverHalfWidth = 190; // 380px / 2
     const currentWidth = state.width || 750;
     if (clickX === null) {
       return '50%';
@@ -129,6 +263,9 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
     <div
       style={{ width: `${state.width}px` }}
       onClick={(e) => {
+        if (e.ctrlKey && e.altKey) {
+          return;
+        }
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         setClickX(x);
@@ -141,12 +278,13 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       <div className="relative h-10 w-full">
         {state.ticks.map((tick) => {
           const isActive = state.activeTickId === tick.id;
+          const tickPercent = getTickPercent(tick.seconds, state.ticks);
           return (
             <div
               key={tick.id}
               className="absolute flex flex-col items-center"
               style={{
-                left: `${tick.percent}%`,
+                left: `${tickPercent}%`,
                 transform: 'translateX(-50%)',
                 bottom: '0px',
               }}
@@ -161,8 +299,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   saveStateToParent(nextState);
 
                   // Set popover pointer to the selected tick
-                  const pct = tick.percent;
-                  const calculatedX = (pct / 100) * stateRef.current.width;
+                  const calculatedX = (tickPercent / 100) * stateRef.current.width;
                   setClickX(calculatedX);
                 }}
                 className={`nodrag font-semibold font-mono px-2.5 py-0.5 rounded border shadow-xs transition-all cursor-pointer ${
@@ -176,7 +313,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                 }}
                 title="选择并高亮该镜头对应的所有卡片连线"
               >
-                {tick.time}
+                {formatSecondsToTime(tick.seconds)}
               </button>
 
               {/* Vertical Tick Mark line */}
@@ -206,16 +343,20 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       </div>
 
       {/* 2. MAIN HORIZONTAL RED TRACK RAIL LINE */}
-      <div className="relative w-full h-[8px] bg-neutral-900 rounded-full mt-2.5">
+        <div
+          className="relative w-full h-[8px] bg-neutral-900 rounded-full mt-2.5"
+          onClick={handleRailClick}
+          title="按住 Ctrl + Alt 点击轨道可新增时间点"
+        >
         {/* Right Pointer Arrowhead */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1.5 w-0 h-0 border-y-[8px] border-y-transparent border-l-[12px] border-l-neutral-900" />
 
         {/* Drag Resize Handle on right tip */}
-        <div
-          onPointerDown={handleResize}
-          className="nodrag absolute right-0 top-1/2 -translate-y-1/2 translate-x-3.5 w-7 h-7 flex items-center justify-center cursor-ew-resize bg-white rounded-full border border-neutral-300 shadow-md text-neutral-600 hover:text-neutral-950 hover:border-neutral-600 transition-colors z-10"
-          title="左右拖拽拉伸轨道长度"
-        >
+          <div
+            onPointerDown={handleResize}
+            className="nodrag absolute -right-12 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center cursor-ew-resize bg-white rounded-full border border-neutral-300 shadow-md text-neutral-600 hover:text-neutral-950 hover:border-neutral-600 transition-colors z-20"
+            title="左右拖拽拉伸轨道长度"
+          >
           <span className="text-[11px] font-bold">↔</span>
         </div>
       </div>
@@ -230,7 +371,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
             left: getPopoverLeft(),
             transform: 'translateX(-50%)',
           }}
-          className="nodrag absolute top-[58px] bg-white border border-neutral-200 shadow-xl rounded-lg p-3.5 w-[330px] z-50 flex flex-col gap-3 text-left animate-in fade-in duration-150"
+          className="nodrag absolute top-[92px] bg-white border border-neutral-200 shadow-xl rounded-lg p-3.5 w-[380px] z-50 flex flex-col gap-3 text-left animate-in fade-in duration-150"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
@@ -275,93 +416,89 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
 
           {/* Timestamp items list */}
           <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-            {state.ticks.map((tick) => (
+            {state.ticks.map((tick, index) => {
+              const hours = Math.floor(tick.seconds / 3600);
+              const minutes = Math.floor((tick.seconds % 3600) / 60);
+              const seconds = tick.seconds % 60;
+              const percent = getTickPercent(tick.seconds, state.ticks);
+              const isBoundaryTick = index === 0 || index === state.ticks.length - 1;
+
+              return (
               <div key={tick.id} className="flex items-center gap-2 border-b border-neutral-50 pb-1.5 last:border-none last:pb-0">
-                {/* Time Input */}
-                <input
-                  type="text"
-                  value={tick.time}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const nextTicks = state.ticks.map((t) => (t.id === tick.id ? { ...t, time: val } : t));
-                    const nextState = { ...state, ticks: nextTicks };
-                    setState(nextState);
-                    saveStateToParent(nextState);
-                  }}
-                  className="text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-2 py-0.5 w-16 focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
-                  placeholder="00:00"
-                  title="标记时刻点"
-                />
-                {/* Micro slider */}
-                <input
-                  type="range"
-                  min="2"
-                  max="98"
-                  value={tick.percent}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    const nextTicks = state.ticks.map((t) => (t.id === tick.id ? { ...t, percent: val } : t));
-                    const nextState = { ...state, ticks: nextTicks };
-                    setState(nextState);
-                    saveStateToParent(nextState);
-                  }}
-                  className="flex-1 h-1 bg-neutral-100 rounded-lg appearance-none cursor-ew-resize accent-neutral-800 focus:outline-none"
-                  title="调整百分比位置"
-                />
-                <span className="text-[10px] font-mono text-neutral-400 w-8 text-right">{tick.percent}%</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    value={hours}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const nextHours = Math.max(0, Number.parseInt(e.target.value || '0', 10));
+                      updateTickSeconds(tick.id, nextHours * 3600 + minutes * 60 + seconds);
+                    }}
+                    className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-11 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                    title="小时"
+                  />
+                  <span className="text-xs font-mono font-bold text-neutral-400">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={minutes}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const nextMinutes = Math.max(0, Math.min(59, Number.parseInt(e.target.value || '0', 10)));
+                      updateTickSeconds(tick.id, hours * 3600 + nextMinutes * 60 + seconds);
+                    }}
+                    className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-11 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                    title="分钟"
+                  />
+                  <span className="text-xs font-mono font-bold text-neutral-400">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={seconds}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const nextSeconds = Math.max(0, Math.min(59, Number.parseInt(e.target.value || '0', 10)));
+                      updateTickSeconds(tick.id, minutes * 60 + nextSeconds);
+                    }}
+                    className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-12 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                    title="秒"
+                  />
+                </div>
+                <div className="w-24 h-1 bg-neutral-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-neutral-800" style={{ width: `${percent}%` }} />
+                </div>
+                <span className="text-[10px] font-mono text-neutral-400 w-8 text-right">{Math.round(percent)}%</span>
                 {/* Single Tick Deletion */}
                 <button
                   onClick={() => {
-                    const nextTicks = state.ticks.filter((t) => t.id !== tick.id);
+                    if (state.ticks.length <= 2 || isBoundaryTick) return;
+                    const nextTicks = normalizeTickOrder(state.ticks.filter((t) => t.id !== tick.id));
                     const nextActiveId = state.activeTickId === tick.id ? null : state.activeTickId;
                     const nextState = { ...state, ticks: nextTicks, activeTickId: nextActiveId };
                     setState(nextState);
                     saveStateToParent(nextState);
                   }}
-                  disabled={state.ticks.length <= 1}
+                  disabled={state.ticks.length <= 2 || isBoundaryTick}
                   className="p-1 hover:bg-red-50 text-neutral-400 hover:text-red-500 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                  title="移除此时刻"
+                  title={isBoundaryTick ? '头尾边界不可删除' : '移除此时刻'}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {/* Controls Footer buttons */}
           <div className="flex items-center justify-between border-t border-neutral-100 pt-2 bg-neutral-25/10">
             <button
-              onClick={() => {
-                const nextId = `tick-${Date.now()}`;
-                let lastPercent = 50;
-                if (state.ticks.length > 0) {
-                  lastPercent = state.ticks[state.ticks.length - 1].percent;
-                }
-                const nextPercent = Math.min(95, lastPercent + 15);
-                
-                // Formulate a logical default label based on last tick
-                let nextLabel = '30:00';
-                if (state.ticks.length > 0) {
-                  const lastLabel = state.ticks[state.ticks.length - 1].time;
-                  if (lastLabel.includes(':')) {
-                    const secs = parseInt(lastLabel.split(':').pop() || '0', 10);
-                    const mins = parseInt(lastLabel.split(':')[0] || '0', 10);
-                    const totalSecs = mins * 60 + secs + 10;
-                    const nextMins = Math.floor(totalSecs / 60);
-                    const nextSecs = totalSecs % 60;
-                    nextLabel = `${nextMins.toString().padStart(2, '0')}:${nextSecs.toString().padStart(2, '0')}`;
-                  }
-                }
-
-                const nextTicks = [...state.ticks, { id: nextId, time: nextLabel, percent: nextPercent }];
-                const nextState = { ...state, ticks: nextTicks };
-                setState(nextState);
-                saveStateToParent(nextState);
-              }}
+              onClick={addTickInLargestGap}
               className="inline-flex items-center gap-1 text-[10px] font-bold bg-neutral-900 hover:bg-neutral-800 text-white px-2.5 py-1.5 rounded-md transition-all cursor-pointer shadow-xs"
             >
               <Plus className="w-3 h-3" />

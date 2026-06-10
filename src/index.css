@@ -119,7 +119,7 @@
 
 /* React Flow custom CSS overrides to maintain our deep premium aesthetic */
 .react-flow__pane {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 
 .react-flow__handle {
@@ -193,4 +193,14 @@
   stroke-width: 4px !important;
   stroke-linecap: round !important;
   stroke-linejoin: round !important;
+}
+
+.timeline-time-input::-webkit-outer-spin-button,
+.timeline-time-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.timeline-time-input {
+  appearance: textfield;
 }

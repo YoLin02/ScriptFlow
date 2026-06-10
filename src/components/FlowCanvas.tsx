@@ -9,6 +9,7 @@ import {
   MiniMap,
   Controls,
   Background,
+  BackgroundVariant,
   addEdge,
   Connection,
   Edge,
@@ -421,9 +422,9 @@ export default function FlowCanvas({
       content = '';
       const timelineData: TimelineTrackDataValue = {
         ticks: [
-          { id: `tick-${Date.now()}-0`, time: '00:00', percent: 10 },
-          { id: `tick-${Date.now()}-1`, time: '10:00', percent: 50 },
-          { id: `tick-${Date.now()}-2`, time: '20:00', percent: 90 },
+          { id: `tick-${Date.now()}-0`, seconds: 0 },
+          { id: `tick-${Date.now()}-1`, seconds: 600 },
+          { id: `tick-${Date.now()}-2`, seconds: 1200 },
         ],
         width: 750,
         activeTickId: null,
@@ -681,9 +682,14 @@ export default function FlowCanvas({
             onNodeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
             onEdgeContextMenu={(e) => { e.preventDefault(); setEditingId(null); }}
             fitView
-            className="bg-neutral-50"
+            className="bg-white"
           >
-            <Background color="#ccc" gap={16} size={1} />
+            <Background
+              variant={BackgroundVariant.Dots}
+              color="#9ca3af"
+              gap={39}
+              size={1.35}
+            />
             <Controls
               position="bottom-right"
               style={{
