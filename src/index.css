@@ -133,8 +133,8 @@
   border-radius: 0.5rem;
   border: 1px solid #e5e5e5;
   background: #ffffff;
-  padding: 0.45rem 0.55rem;
-  font-size: 0.75rem;
+  padding: 0.38rem 0.5rem;
+  font-size: 0.72rem;
   color: #262626;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -145,14 +145,33 @@
   box-shadow: 0 0 0 2px rgba(115, 115, 115, 0.12);
 }
 
+.node-specific-fields {
+  animation: node-specific-fields-in 0.18s ease-out;
+}
+
+@keyframes node-specific-fields-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* React Flow custom CSS overrides to maintain our deep premium aesthetic */
 .react-flow__pane {
   background-color: transparent;
   cursor: default !important;
+  user-select: none;
+  overscroll-behavior: none;
 }
 
 .react-flow.is-pointer-panning,
-.react-flow.is-pointer-panning .react-flow__pane {
+.react-flow.is-pointer-panning .react-flow__pane,
+.react-flow.is-pointer-panning .react-flow__edge,
+.react-flow.is-pointer-panning .react-flow__edge-path {
   cursor: grabbing !important;
 }
 
@@ -207,6 +226,11 @@
 .react-flow__edge-path {
   stroke-width: 1.5px;
   transition: stroke-width 0.15s ease;
+  cursor: pointer !important;
+}
+
+.react-flow__edge {
+  cursor: pointer !important;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {

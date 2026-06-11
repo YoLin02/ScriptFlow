@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" aria-label="Tab favicon padded">
+  <!-- White badge / breathing space -->
+  <rect x="2" y="2" width="60" height="60" rx="13" ry="13" fill="#ffffff"/>
+
+  <!-- White wrap around the main key shape -->
+  <rect x="7" y="6" width="50" height="42" rx="10" ry="10"
+        fill="none" stroke="#ffffff" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M9 46 Q11 54 17 56 H47 Q53 54 55 46"
+        fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Main black key shape -->
+  <rect x="7" y="6" width="50" height="42" rx="10" ry="10"
+        fill="none" stroke="#000000" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M9 46 Q11 54 17 56 H47 Q53 54 55 46"
+        fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Inner Tab-inspired flow mark with slightly more padding -->
+  <line x1="7" y1="29" x2="15" y2="29"
+        stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="19" cy="29" r="4.2" fill="#000000"/>
+  <polyline points="24,20 32,29 24,38"
+            fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="32" y1="29" x2="45" y2="29"
+        stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+  <polyline points="40,22 49,29 40,36"
+            fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

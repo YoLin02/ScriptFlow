@@ -131,10 +131,16 @@ const Header = memo(function Header({
   return (
     <header className="absolute top-4 left-4 right-4 bg-transparent select-none z-30 flex items-center justify-between pointer-events-none">
       {/* Brand Identity / Title info */}
-      <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-neutral-200/80 shadow-md py-1.5 px-3.5 rounded-lg pointer-events-auto">
-        <h1 className="text-xs font-semibold tracking-tight text-neutral-950 flex items-center gap-1.5">
+      <div className="flex items-center gap-2.5 bg-white/80 backdrop-blur-md border border-neutral-200/80 shadow-md py-1.5 px-3 rounded-lg pointer-events-auto">
+        <img
+          src="/scriptflow-brand-icon.png"
+          alt=""
+          aria-hidden="true"
+          className="h-6 w-6 rounded-md object-cover"
+        />
+        <h1 className="text-sm font-semibold tracking-tight text-neutral-950 flex items-center gap-1.5">
           <span>{APP_NAME}</span>
-          <span className="text-[8px] font-normal font-mono bg-neutral-100 text-neutral-500 py-0.5 px-1 rounded-xs">
+          <span className="text-[10px] font-normal font-mono text-neutral-400">
             {APP_VERSION}
           </span>
         </h1>

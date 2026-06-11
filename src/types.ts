@@ -12,6 +12,14 @@ export interface TableNodeDataValue {
   rows: string[][];
 }
 
+export type TableTextAlign = 'left' | 'center' | 'right';
+
+export interface TableCellSelection {
+  section: 'header' | 'body';
+  rowIndex?: number;
+  columnIndex: number;
+}
+
 export interface TimelineTick {
   id: string;
   seconds: number;
@@ -49,15 +57,20 @@ export interface ImageCanvasNodeData extends BaseCanvasNodeData {
   type: 'image';
   imageUrl?: string;
   imageCaption?: string;
+  imageDisplayMode?: 'contain' | 'cover' | 'original';
 }
 
 export interface IdeaCanvasNodeData extends BaseCanvasNodeData {
   type: 'idea';
+  highlighted?: boolean;
 }
 
 export interface TableCanvasNodeData extends BaseCanvasNodeData {
   type: 'table';
   tableData?: TableNodeDataValue;
+  tableAlign?: TableTextAlign;
+  tableCellAlignments?: Record<string, TableTextAlign>;
+  activeTableCell?: TableCellSelection | null;
 }
 
 export interface TimelineCanvasNodeData extends BaseCanvasNodeData {

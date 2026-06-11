@@ -19,6 +19,12 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
   const [tempUrl, setTempUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const imageDisplayMode = data.imageDisplayMode || 'contain';
+  const imageClassName = imageDisplayMode === 'cover'
+    ? 'h-[180px] w-full object-cover'
+    : imageDisplayMode === 'original'
+      ? 'max-w-none max-h-none'
+      : 'max-w-full max-h-[180px] object-contain';
 
   // Sync state with outer modifications
   useEffect(() => {
@@ -165,7 +171,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
                 src={imageUrl} 
                 alt="Uploaded resource" 
                 referrerPolicy="no-referrer"
-                className="max-w-full max-h-[180px] object-contain"
+                className={imageClassName}
               />
               <button
                 onClick={() => { setImageUrl(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}

@@ -2,7 +2,7 @@ import React, { memo, useContext, useEffect, useState } from 'react';
 import { Plus, Table, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-import type { TableCanvasNodeData, TableNodeDataValue } from '../../types';
+import type { TableCanvasNodeData, TableCellSelection, TableNodeDataValue, TableTextAlign } from '../../types';
 
 const DEFAULT_TABLE_DATA: TableNodeDataValue = {
   headers: ['姓名', '岗位', '进度'],
@@ -39,6 +39,12 @@ function getTableDataFromNode(data: TableCanvasNodeData): TableNodeDataValue {
   return DEFAULT_TABLE_DATA;
 }
 
+function getTableCellKey(selection: TableCellSelection) {
+  return selection.section === 'header'
+    ? `header-${selection.columnIndex}`
+    : `body-${selection.rowIndex ?? 0}-${selection.columnIndex}`;
+}
+
 export const TableNode = memo(({ id, data, selected }: { id: string; data: TableCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
   const [titleVal, setTitleVal] = useState(data.title || '自定义表格');
@@ -57,6 +63,15 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
 
   const saveTableData = (updatedTable: typeof table, updatedTitle = titleVal) => {
     onUpdateContent?.(id, '', updatedTitle, undefined, undefined, { tableData: updatedTable });
+  };
+
+  const selectTableCell = (selection: TableCellSelection) => {
+    onUpdateContent?.(id, '', titleVal, undefined, undefined, { tableData: table, activeTableCell: selection });
+  };
+
+  const getCellAlignment = (selection: TableCellSelection): TableTextAlign => {
+    const key = getTableCellKey(selection);
+    return data.tableCellAlignments?.[key] || data.tableAlign || 'left';
   };
 
   const updateHeaderCell = (colIdx: number, value: string) => {
@@ -183,8 +198,10 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
                       value={hdr}
                       onChange={(e) => updateHeaderCell(cIdx, e.target.value)}
                       className="nodrag w-full text-[11px] font-bold text-neutral-700 bg-transparent border-none p-0 focus:outline-none focus:ring-0"
+                      style={{ textAlign: getCellAlignment({ section: 'header', columnIndex: cIdx }) }}
                       onClick={(e) => e.stopPropagation()}
-                    />
+                      onFocus={() => selectTableCell({ section: 'header', columnIndex: cIdx })}
+                      />
                     {table.headers.length > 1 && (
                       <button
                         onClick={(e) => {
@@ -211,7 +228,9 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
                         value={cell}
                         onChange={(e) => updateBodyCell(rIdx, cIdx, e.target.value)}
                         className="nodrag w-full text-xs text-neutral-600 bg-transparent border-none p-0 focus:outline-none focus:ring-0"
+                        style={{ textAlign: getCellAlignment({ section: 'body', rowIndex: rIdx, columnIndex: cIdx }) }}
                         onClick={(e) => e.stopPropagation()}
+                        onFocus={() => selectTableCell({ section: 'body', rowIndex: rIdx, columnIndex: cIdx })}
                       />
                       {cIdx === row.length - 1 && table.rows.length > 1 && (
                         <button
