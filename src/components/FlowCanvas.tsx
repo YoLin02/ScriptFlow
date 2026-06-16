@@ -430,6 +430,7 @@ export default function FlowCanvas({
       target: params.target,
       sourceHandle: params.sourceHandle,
       targetHandle: params.targetHandle,
+      type: 'default',
       label: '镜头关联',
       animated: true,
       style: { stroke: '#737373', strokeWidth: 1.5 },

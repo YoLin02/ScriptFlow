@@ -533,7 +533,7 @@ const TiptapEditor = memo(function TiptapEditor({
               </div>
               <button
                 onClick={() => setIsOutlineOpen(false)}
-                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
+                className="cursor-pointer p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
                 title="关闭目录"
               >
                 <X className="w-4 h-4" />
@@ -548,7 +548,7 @@ const TiptapEditor = memo(function TiptapEditor({
                   <button
                     key={`${entry.id}-${index}`}
                     onClick={() => jumpToOutline(entry)}
-                    className="w-full text-left rounded-lg px-3 py-2 hover:bg-neutral-100 transition-colors"
+                    className="w-full cursor-pointer text-left rounded-lg px-3 py-2 hover:bg-neutral-50 transition-colors"
                     style={{ paddingLeft: `${12 + (entry.level - 1) * 16}px` }}
                   >
                     <span className="block text-[10px] text-neutral-400">H{entry.level}</span>
@@ -644,7 +644,7 @@ const TiptapEditor = memo(function TiptapEditor({
           </button>
           <button
             onClick={() => setIsToolsDrawerOpen((open) => !open)}
-            className="p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 transition-colors"
+            className="cursor-pointer p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 transition-colors"
             title="展开更多工具"
           >
             {isToolsDrawerOpen ? <ChevronUp className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
@@ -660,8 +660,8 @@ const TiptapEditor = memo(function TiptapEditor({
           <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-0.5">
             <button
               onClick={() => setIsOutlineOpen((open) => !open)}
-              className={`flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border transition-colors ${
-                isOutlineOpen ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+              className={`flex shrink-0 cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border transition-colors ${
+                isOutlineOpen ? 'border-neutral-200 bg-neutral-200 text-neutral-950' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
               }`}
             >
               <PanelLeftOpen className="w-3.5 h-3.5" />
@@ -669,21 +669,21 @@ const TiptapEditor = memo(function TiptapEditor({
             </button>
             <button
               onClick={() => setIsSearchOpen((open) => !open)}
-              className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
             >
               <Search className="w-3.5 h-3.5" />
               查找替换
             </button>
             <button
               onClick={() => markdownInputRef.current?.click()}
-              className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
             >
               <Download className="w-3.5 h-3.5" />
               导入MD
             </button>
             <button
               onClick={() => downloadMarkdown(htmlToMarkdown(editor.getHTML()))}
-              className="flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+              className="flex shrink-0 cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
             >
               <Upload className="w-3.5 h-3.5" />
               导出MD

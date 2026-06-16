@@ -353,7 +353,7 @@ export default function App() {
 
         {/* Sidebar expand collapse trigger button - placed OUTSIDE the column to transition beautifully */}
         <div 
-          className={`hidden md:flex items-center absolute z-30 top-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out ${
+          className={`hidden md:flex cursor-pointer items-center absolute z-30 top-1/2 -translate-y-1/2 transition-all duration-300 ease-in-out ${
             isSidebarCollapsed 
               ? 'left-0' 
               : activeTab === 'editor'

@@ -1,5 +1,5 @@
 import { Edge, MarkerType } from '@xyflow/react';
-import { AlignCenter, AlignLeft, AlignRight, Link2, MousePointer2, Palette, SquareDashedMousePointer, Upload } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, CornerDownRight, Link2, MousePointer2, Palette, Route, SquareDashedMousePointer, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { TableCellSelection, TableNodeDataValue, TableTextAlign, WorkspaceNode } from '../types';
@@ -19,6 +19,10 @@ const IMAGE_DISPLAY_OPTIONS = [
   { value: 'contain', label: '适应' },
   { value: 'cover', label: '填充' },
   { value: 'original', label: '原始' },
+];
+const EDGE_ROUTE_OPTIONS: Array<{ value: 'default' | 'step'; label: string; icon: ReactNode }> = [
+  { value: 'default', label: '弧线', icon: <Route className="h-4 w-4" /> },
+  { value: 'step', label: '折线', icon: <CornerDownRight className="h-4 w-4" /> },
 ];
 const ALIGNMENT_OPTIONS: Array<{ value: TableTextAlign; label: string; icon: ReactNode }> = [
   { value: 'left', label: '左对齐', icon: <AlignLeft className="h-4 w-4" /> },
@@ -85,6 +89,7 @@ function EdgePropertiesPanel({
 }) {
   const edgeColor = typeof selectedEdge.style?.stroke === 'string' ? selectedEdge.style.stroke : '#737373';
   const isDashed = typeof selectedEdge.style?.strokeDasharray === 'string' && selectedEdge.style.strokeDasharray.length > 0;
+  const edgeRouteType = selectedEdge.type === 'step' ? 'step' : 'default';
 
   return (
     <PanelShell title="连线属性" subtitle="编辑当前关系线" icon={<Link2 className="h-4 w-4" />}>
@@ -114,8 +119,8 @@ function EdgePropertiesPanel({
           }
         />
       </Field>
-      <Field label="线型">
-        <SegmentedControl
+      <InlineField label="线型">
+        <CompactTextSegmentedControl
           value={isDashed ? 'dashed' : 'solid'}
           options={[
             { value: 'solid', label: '实线' },
@@ -131,7 +136,14 @@ function EdgePropertiesPanel({
             })
           }
         />
-      </Field>
+      </InlineField>
+      <InlineField label="路径形态">
+        <EdgeRouteControl
+          value={edgeRouteType}
+          options={EDGE_ROUTE_OPTIONS}
+          onChange={(value) => onUpdateEdge(selectedEdge.id, { type: value })}
+        />
+      </InlineField>
     </PanelShell>
   );
 }
@@ -260,10 +272,7 @@ function NodeSpecificFields({
 
     return (
       <>
-        <div className="grid grid-cols-2 gap-2">
-          <SummaryCard label="行数" value={`${rowCount}`} />
-          <SummaryCard label="列数" value={`${columnCount}`} />
-        </div>
+        <TableSummary rowCount={rowCount} columnCount={columnCount} />
         <TableAlignmentFields node={node} nodeIds={nodeIds} onUpdateNodes={onUpdateNodes} />
       </>
     );
@@ -328,7 +337,7 @@ function ImageSpecificFields({
           type="button"
           onClick={() => setShowUrlInput((value) => !value)}
           className={`flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border text-xs font-medium shadow-xs transition-colors ${
-            showUrlInput ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+            showUrlInput ? 'border-neutral-200 bg-neutral-200 text-neutral-900' : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
           }`}
         >
           <span className="text-base leading-none">+</span>
@@ -446,11 +455,24 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function InlineField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-      <div className="text-[10px] text-neutral-400">{label}</div>
-      <div className="text-sm font-semibold text-neutral-800">{value}</div>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[11px] font-medium text-neutral-500">{label}</span>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function TableSummary({ rowCount, columnCount }: { rowCount: number; columnCount: number }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs">
+      <span className="text-neutral-500">表格规模</span>
+      <div className="flex items-center gap-2 font-semibold text-neutral-800">
+        <span>{rowCount} 行</span>
+        <span className="h-3 w-px bg-neutral-200" />
+        <span>{columnCount} 列</span>
+      </div>
     </div>
   );
 }
@@ -473,7 +495,7 @@ function ColorSwatches({
           key={color}
           onClick={() => onSelect(color)}
           className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-all ${
-            activeColor === color ? 'bg-neutral-100 ring-1 ring-neutral-200' : 'bg-transparent hover:bg-neutral-50'
+            activeColor === color ? 'bg-neutral-200 ring-1 ring-neutral-200' : 'bg-transparent hover:bg-neutral-50'
           }`}
           title={color}
         >
@@ -497,8 +519,8 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (value: st
           onClick={() => onChange(status)}
           className={`h-7 cursor-pointer rounded-lg px-2 text-[11px] transition-colors ${
             value === status
-              ? 'bg-neutral-900 text-white'
-              : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'bg-transparent text-neutral-600 hover:bg-neutral-50'
           }`}
         >
           {status || '无状态'}
@@ -528,8 +550,36 @@ function SegmentedControl({
           onClick={() => onChange(option.value)}
           className={`h-8 cursor-pointer rounded-lg px-1 text-xs font-medium transition-colors ${
             value === option.value
-              ? 'bg-neutral-900 text-white'
-              : 'text-neutral-600 hover:bg-neutral-100'
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-600 hover:bg-neutral-50'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CompactTextSegmentedControl({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="inline-grid grid-cols-2 gap-1 rounded-xl border border-neutral-200 bg-white p-1">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className={`h-8 w-14 cursor-pointer rounded-lg text-xs font-medium transition-colors ${
+            value === option.value
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-600 hover:bg-neutral-50'
           }`}
         >
           {option.label}
@@ -561,8 +611,37 @@ function IconSegmentedControl({
             disabled ? 'cursor-not-allowed' : 'cursor-pointer'
           } ${
             value === option.value
-              ? 'bg-neutral-900 text-white'
-              : 'text-neutral-600 hover:bg-neutral-100'
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-600 hover:bg-neutral-50'
+          }`}
+          title={option.label}
+        >
+          {option.icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EdgeRouteControl({
+  value,
+  options,
+  onChange,
+}: {
+  value: 'default' | 'step';
+  options: Array<{ value: 'default' | 'step'; label: string; icon: ReactNode }>;
+  onChange: (value: 'default' | 'step') => void;
+}) {
+  return (
+    <div className="inline-grid grid-cols-2 gap-1 rounded-xl border border-neutral-200 bg-white p-1">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className={`flex h-8 w-9 cursor-pointer items-center justify-center rounded-lg transition-colors ${
+            value === option.value
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
           }`}
           title={option.label}
         >
