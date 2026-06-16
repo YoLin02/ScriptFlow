@@ -1,0 +1,1 @@
+export const SEARCH_PANEL_ANIMATION_MS = 180;
