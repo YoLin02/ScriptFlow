@@ -605,7 +605,7 @@ const TiptapEditor = memo(function TiptapEditor({
             onClick={handleExtractSelection}
             disabled={isSelectionEmpty}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-800 disabled:text-neutral-400 bg-white hover:bg-neutral-100 disabled:hover:bg-white border border-neutral-200 rounded-md shadow-sm disabled:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed"
-            data-tooltip="选取文本切成新的文本节点"
+            data-tooltip="选取文本生成卡片"
             data-tooltip-placement="bottom"
           >
             <Scissors className="w-3.5 h-3.5" />
@@ -614,7 +614,7 @@ const TiptapEditor = memo(function TiptapEditor({
           <button
             onClick={() => setIsToolsDrawerOpen((open) => !open)}
             className="cursor-pointer p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 transition-colors"
-            data-tooltip="展开更多工具"
+            data-tooltip="更多"
             data-tooltip-placement="bottom"
           >
             {isToolsDrawerOpen ? <ChevronUp className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
