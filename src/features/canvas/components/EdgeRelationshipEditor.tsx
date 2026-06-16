@@ -1,7 +1,7 @@
 import { Edge } from '@xyflow/react';
 import { Trash2 } from 'lucide-react';
-import { DEFAULT_RELATION_TAGS } from './flowCanvasUtils';
-import { useFeedback } from './feedback/FeedbackProvider';
+import { DEFAULT_RELATION_TAGS } from '../constants';
+import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 
 interface EdgeRelationshipEditorProps {
   selectedEdge: Edge | null;

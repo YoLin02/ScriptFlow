@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Edge } from '@xyflow/react';
-import type { ShortcutMap } from '../../../shortcuts';
-import { isEditableShortcutTarget, isShortcutEvent } from '../../../shortcuts';
+import type { ShortcutMap } from '../../shortcuts';
+import { isEditableShortcutTarget, isShortcutEvent } from '../../shortcuts';
 import type { WorkspaceNode } from '../../../types';
 
 interface UseCanvasShortcutsOptions {

@@ -2,7 +2,7 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, Image as ImageIcon, Plus, Trash2, Upload } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-import type { ImageCanvasNodeData } from '../../types';
+import type { ImageCanvasNodeData } from '../../../types';
 
 export const ImageNode = memo(({ id, data, selected }: { id: string; data: ImageCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);

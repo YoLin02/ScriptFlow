@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { CanvasMediaAsset, WorkspaceNode } from '../../../types';
-import { dbGet, dbSet } from '../../../db';
-import { useFeedback } from '../../../components/feedback/FeedbackProvider';
+import { dbGet, dbSet } from '../../../shared/storage/db';
+import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 import { CANVAS_MEDIA_ASSETS_KEY } from '../constants';
 import { createImageNodeFromAsset, createMediaAsset, getImageExtension } from '../utils/mediaAssetUtils';
 

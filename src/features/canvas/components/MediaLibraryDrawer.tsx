@@ -1,6 +1,6 @@
 import { Download, FolderOpen, Image, Trash2, Upload, X } from 'lucide-react';
-import { CanvasMediaAsset } from '../types';
-import { useFeedback } from './feedback/FeedbackProvider';
+import { CanvasMediaAsset } from '../../../types';
+import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 
 interface MediaLibraryDrawerProps {
   open: boolean;

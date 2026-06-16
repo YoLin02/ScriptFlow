@@ -2,7 +2,7 @@ import type { CanvasNodeData, NodeType, TableNodeDataValue, TimelineTrackDataVal
 
 export function createCanvasNode(type: NodeType, position: { x: number; y: number }): WorkspaceNode {
   const id = `node-${Date.now()}`;
-  let content = '双击此卡片输入内容...';
+  let content = '';
   let title = '新建卡片';
   let extraData: Partial<CanvasNodeData> = {};
 
@@ -10,7 +10,7 @@ export function createCanvasNode(type: NodeType, position: { x: number; y: numbe
     content = '';
     title = '图片节点';
   } else if (type === 'idea') {
-    content = '记录突发的写作灵感或批注备注';
+    content = '';
     title = '灵感火花';
   } else if (type === 'table') {
     content = '';

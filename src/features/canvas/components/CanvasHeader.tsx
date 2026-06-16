@@ -7,11 +7,11 @@ import React, { useState, useRef, useEffect, memo } from 'react';
 import { 
   BookOpen, Download, HelpCircle, Compass, MoreHorizontal, Rows3, Trash2, Upload, Keyboard
 } from 'lucide-react';
-import { WorkspaceSaveState } from '../types';
-import { useFeedback } from './feedback/FeedbackProvider';
-import { APP_NAME, APP_VERSION } from '../appMetadata';
+import { WorkspaceSaveState } from '../../../types';
+import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
+import { APP_NAME, APP_VERSION } from '../../../appMetadata';
 
-interface HeaderProps {
+interface CanvasHeaderProps {
   onLoadPreset: (presetName: string) => void;
   onExportState: () => void;
   onImportState: (state: WorkspaceSaveState) => void;
@@ -26,7 +26,7 @@ interface HeaderProps {
   onOpenShortcutSettings?: () => void;
 }
 
-const Header = memo(function Header({ 
+const CanvasHeader = memo(function CanvasHeader({ 
   onLoadPreset, 
   onExportState, 
   onImportState, 
@@ -39,7 +39,7 @@ const Header = memo(function Header({
   onAssembleDocument,
   onRequestClearCanvas,
   onOpenShortcutSettings
-}: HeaderProps) {
+}: CanvasHeaderProps) {
   const { toast } = useFeedback();
   const [localShowMenu, setLocalShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -319,6 +319,6 @@ const Header = memo(function Header({
   );
 });
 
-Header.displayName = 'Header';
+CanvasHeader.displayName = 'CanvasHeader';
 
-export default Header;
+export default CanvasHeader;

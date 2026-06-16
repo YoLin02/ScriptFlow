@@ -1,7 +1,7 @@
 import { Film, FolderOpen, Image, Lightbulb, MoreHorizontal, Table, Type } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { AutoSaveStatus, NodeType } from '../types';
-import type { ShortcutMap } from '../shortcuts';
+import { AutoSaveStatus, NodeType } from '../../../types';
+import type { ShortcutMap } from '../../shortcuts';
 
 interface CanvasToolbarProps {
   isDrawerOpen: boolean;

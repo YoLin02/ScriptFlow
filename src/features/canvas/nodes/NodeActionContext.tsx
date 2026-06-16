@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { CanvasNodeData } from '../../types';
+import type { CanvasNodeData } from '../../../types';
 import type { ShortcutMap } from '../../shortcuts';
 
 export interface NodeActionContextProps {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Editor } from '@tiptap/core';
-import type { ShortcutMap } from '../../../shortcuts';
-import { isShortcutEvent } from '../../../shortcuts';
+import type { ShortcutMap } from '../../shortcuts';
+import { isShortcutEvent } from '../../shortcuts';
 
 interface UseEditorShortcutsOptions {
   editor: Editor | null;

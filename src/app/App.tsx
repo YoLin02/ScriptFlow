@@ -7,15 +7,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNodesState, useEdgesState, Edge, ReactFlowProvider } from '@xyflow/react';
 import { Layout, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import Header from './components/Header';
-import TiptapEditor from './components/TiptapEditor';
-import FlowCanvas from './components/FlowCanvas';
-import ShortcutSettingsPanel from './components/ShortcutSettingsPanel';
-import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from './types';
-import { quantumStoryPreset, brainstormPreset, blankPreset } from './presets';
-import { dbGet, dbSet, dbRemove } from './db';
-import { useFeedback } from './components/feedback/FeedbackProvider';
-import { DEFAULT_SHORTCUTS, SHORTCUT_STORAGE_KEY, ShortcutMap } from './shortcuts';
+import FlowCanvas from '../features/canvas';
+import TiptapEditor from '../features/script-editor';
+import { DEFAULT_SHORTCUTS, SHORTCUT_STORAGE_KEY, ShortcutMap, ShortcutSettingsPanel } from '../features/shortcuts';
+import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from '../types';
+import { quantumStoryPreset, brainstormPreset, blankPreset } from '../presets';
+import { dbGet, dbSet, dbRemove } from '../shared/storage/db';
+import { useFeedback } from '../shared/feedback/FeedbackProvider';
 
 const STORAGE_KEY = 'visual_text_flow_state';
 const MAX_HISTORY_ENTRIES = 50;

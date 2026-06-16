@@ -1,8 +1,9 @@
 import { Edge, MarkerType } from '@xyflow/react';
-import { AlignCenter, AlignLeft, AlignRight, CornerDownRight, Link2, MousePointer2, Palette, Route, SquareDashedMousePointer, Upload } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, CornerDownRight, Link2, MousePointer2, Route, SquareDashedMousePointer, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { TableCellSelection, TableNodeDataValue, TableTextAlign, WorkspaceNode } from '../types';
+import { TableCellSelection, TableNodeDataValue, TableTextAlign, WorkspaceNode } from '../../../types';
+import ColorSwatches from './color/ColorSwatches';
 
 interface CanvasPropertiesPanelProps {
   selectedNodes: WorkspaceNode[];
@@ -209,7 +210,6 @@ function CommonNodeFields({
           colors={COLOR_OPTIONS}
           activeColor={commonColor}
           onSelect={(color) => onUpdateNodes(nodeIds, { color })}
-          trailing={<Palette className="ml-auto h-4 w-4 text-neutral-300" />}
         />
       </Field>
 
@@ -448,10 +448,10 @@ function SpecificFieldsShell({ children }: { children: ReactNode }) {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1 block text-[11px] font-medium text-neutral-500">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -473,39 +473,6 @@ function TableSummary({ rowCount, columnCount }: { rowCount: number; columnCount
         <span className="h-3 w-px bg-neutral-200" />
         <span>{columnCount} 列</span>
       </div>
-    </div>
-  );
-}
-
-function ColorSwatches({
-  colors,
-  activeColor,
-  trailing,
-  onSelect,
-}: {
-  colors: string[];
-  activeColor: string;
-  trailing?: ReactNode;
-  onSelect: (color: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {colors.map((color) => (
-        <button
-          key={color}
-          onClick={() => onSelect(color)}
-          className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-all ${
-            activeColor === color ? 'bg-neutral-200 ring-1 ring-neutral-200' : 'bg-transparent hover:bg-neutral-50'
-          }`}
-          data-tooltip={color}
-        >
-          <span
-            className="h-[18px] w-[18px] rounded-full border border-transparent transition-transform"
-            style={{ backgroundColor: color }}
-          />
-        </button>
-      ))}
-      {trailing}
     </div>
   );
 }

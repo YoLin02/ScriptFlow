@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import type { Edge } from '@xyflow/react';
-import { NodeActionContext } from '../../components/CustomNodes';
+import { NodeActionContext } from './nodes';
 import { CANVAS_NODE_TYPES } from './constants';
 import CanvasOverlays from './CanvasOverlays';
 import CanvasViewport from './CanvasViewport';

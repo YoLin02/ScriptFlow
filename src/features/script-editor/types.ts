@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import type { Editor } from '@tiptap/core';
-import type { ShortcutMap } from '../../shortcuts';
+import type { ShortcutMap } from '../shortcuts';
 
 export interface TiptapEditorProps {
   content: string;

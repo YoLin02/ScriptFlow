@@ -1,4 +1,4 @@
-import { ImageNode, IdeaNode, TableNode, TextNode, TimelineNode } from '../../components/CustomNodes';
+import { ImageNode, IdeaNode, TableNode, TextNode, TimelineNode } from './nodes';
 
 export const CANVAS_MEDIA_ASSETS_KEY = 'canvas_media_assets';
 export const RELATION_TAGS_STORAGE_KEY = 'custom_relation_tags';

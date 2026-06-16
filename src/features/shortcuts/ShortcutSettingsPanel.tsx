@@ -8,7 +8,7 @@ import {
   eventToShortcut,
   getShortcutConflicts,
   normalizeShortcut,
-} from '../shortcuts';
+} from './shortcuts';
 
 interface ShortcutSettingsPanelProps {
   open: boolean;
@@ -81,6 +81,7 @@ export default function ShortcutSettingsPanel({
             onClick={onClose}
             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
             data-tooltip="关闭快捷键设置"
+            data-tooltip-placement="bottom"
           >
             <X className="h-4 w-4" />
           </button>

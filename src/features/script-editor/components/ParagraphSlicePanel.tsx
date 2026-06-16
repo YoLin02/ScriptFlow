@@ -38,6 +38,7 @@ export default function ParagraphSlicePanel({
           }}
           className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700"
           data-tooltip={collapsed ? '展开管理器' : '收起管理器'}
+          data-tooltip-placement="bottom"
         >
           {collapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>

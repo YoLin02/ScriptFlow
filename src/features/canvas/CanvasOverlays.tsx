@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
 import type { Edge } from '@xyflow/react';
-import Header from '../../components/Header';
-import WorkspaceHistoryControls from '../../components/WorkspaceHistoryControls';
-import CanvasHintBubble from '../../components/CanvasHintBubble';
-import CanvasPropertiesPanel from '../../components/CanvasPropertiesPanel';
-import CanvasContextMenu from '../../components/CanvasContextMenu';
-import CanvasToolbar from '../../components/CanvasToolbar';
-import MediaLibraryDrawer from '../../components/MediaLibraryDrawer';
-import AssemblyPreviewModal from '../../components/AssemblyPreviewModal';
-import ClearCanvasConfirmModal from '../../components/ClearCanvasConfirmModal';
+import CanvasHeader from './components/CanvasHeader';
+import WorkspaceHistoryControls from './components/WorkspaceHistoryControls';
+import CanvasHintBubble from './components/CanvasHintBubble';
+import CanvasPropertiesPanel from './components/CanvasPropertiesPanel';
+import CanvasContextMenu from './components/CanvasContextMenu';
+import CanvasToolbar from './components/CanvasToolbar';
+import MediaLibraryDrawer from './components/MediaLibraryDrawer';
+import AssemblyPreviewModal from './components/AssemblyPreviewModal';
+import ClearCanvasConfirmModal from './components/ClearCanvasConfirmModal';
 import type { AutoSaveStatus, CanvasNodeData, WorkspaceNode, WorkspaceSaveState } from '../../types';
-import type { ShortcutMap } from '../../shortcuts';
+import type { ShortcutMap } from '../shortcuts';
 import type {
   CanvasAssemblyState,
   CanvasContextMenuState,
@@ -92,7 +92,7 @@ export default function CanvasOverlays({
 }: CanvasOverlaysProps) {
   return (
     <>
-      <Header
+      <CanvasHeader
         onLoadPreset={header.onLoadPreset}
         onExportState={header.onExportState}
         onImportState={header.onImportState}

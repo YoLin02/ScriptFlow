@@ -30,6 +30,7 @@ export default function EditorOutlinePanel({
             onClick={onClose}
             className="cursor-pointer rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800"
             data-tooltip="关闭目录"
+            data-tooltip-placement="bottom"
           >
             <X className="h-4 w-4" />
           </button>

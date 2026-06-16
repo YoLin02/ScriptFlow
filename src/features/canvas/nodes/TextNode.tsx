@@ -2,7 +2,7 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, FileText, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-import type { TextCanvasNodeData } from '../../types';
+import type { TextCanvasNodeData } from '../../../types';
 
 export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);

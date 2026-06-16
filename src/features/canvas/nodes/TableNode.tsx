@@ -2,7 +2,7 @@ import React, { memo, useContext, useEffect, useState } from 'react';
 import { Plus, Table, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-import type { TableCanvasNodeData, TableCellSelection, TableNodeDataValue, TableTextAlign } from '../../types';
+import type { TableCanvasNodeData, TableCellSelection, TableNodeDataValue, TableTextAlign } from '../../../types';
 
 const DEFAULT_TABLE_DATA: TableNodeDataValue = {
   headers: ['姓名', '岗位', '进度'],

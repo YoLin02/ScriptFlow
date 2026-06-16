@@ -13,7 +13,7 @@ import type {
   WorkspaceNode,
   WorkspaceSaveState,
 } from '../../types';
-import type { ShortcutMap } from '../../shortcuts';
+import type { ShortcutMap } from '../shortcuts';
 
 export interface CanvasContextMenuState {
   x: number;

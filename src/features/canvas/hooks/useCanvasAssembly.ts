@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { Edge } from '@xyflow/react';
 import type { WorkspaceNode } from '../../../types';
-import { useFeedback } from '../../../components/feedback/FeedbackProvider';
+import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 import { assembleDocumentFromGraph, assembledTextToHtml } from '../utils/presentationUtils';
 
 interface UseCanvasAssemblyOptions {

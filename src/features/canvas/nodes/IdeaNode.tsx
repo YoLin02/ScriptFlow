@@ -2,7 +2,7 @@ import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, Lightbulb, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import StandardHandles from './StandardHandles';
-import type { IdeaCanvasNodeData } from '../../types';
+import type { IdeaCanvasNodeData } from '../../../types';
 
 export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
@@ -77,9 +77,11 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCa
 
       {/* Node Header Custom minimal */}
       <div className="flex items-center justify-between px-3.5 py-2">
-        <div className="flex items-center gap-1 text-neutral-400">
+        <div className="flex min-w-0 items-center gap-1 text-neutral-400">
           <Lightbulb className="w-3.5 h-3.5 text-neutral-500" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">{data.status || '脑洞 / 想法'}</span>
+          <span className="truncate text-[11px] font-semibold text-neutral-700">
+            {data.title || '灵感火花'}
+          </span>
         </div>
         <div className="flex gap-1">
           {isEditing ? (
