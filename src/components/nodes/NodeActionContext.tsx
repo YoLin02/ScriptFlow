@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import type { CanvasNodeData } from '../../types';
+import type { ShortcutMap } from '../../shortcuts';
 
 export interface NodeActionContextProps {
   onDeleteNode?: (id: string) => void;
@@ -13,6 +14,7 @@ export interface NodeActionContextProps {
   ) => void;
   editingId?: string | null;
   setEditingId?: (id: string | null) => void;
+  shortcuts?: ShortcutMap;
 }
 
 export const NodeActionContext = createContext<NodeActionContextProps>({});

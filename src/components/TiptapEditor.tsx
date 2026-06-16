@@ -9,6 +9,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { marked } from 'marked';
+import TurndownService from 'turndown';
 import {
   Bold,
   Italic,
@@ -31,6 +33,7 @@ import {
   MoreHorizontal,
   X,
 } from 'lucide-react';
+import { ShortcutMap, isShortcutEvent } from '../shortcuts';
 
 interface TiptapEditorProps {
   content: string;
@@ -38,6 +41,7 @@ interface TiptapEditorProps {
   onExtractNode: (text: string, title?: string) => void;
   isCollapsed?: boolean;
   onOutlineOpenChange?: (open: boolean) => void;
+  shortcuts: ShortcutMap;
 }
 
 interface ParagraphEntry {
@@ -112,118 +116,29 @@ const countReadableUnits = (text: string) => {
   return chineseChars.length + words.length;
 };
 
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
 const textFromHtml = (html: string) => {
   const parser = new DOMParser();
   return parser.parseFromString(html, 'text/html').body.textContent ?? '';
 };
 
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  bulletListMarker: '-',
+  codeBlockStyle: 'fenced',
+  strongDelimiter: '**',
+  emDelimiter: '*',
+});
+
 const markdownToHtml = (markdown: string) => {
-  const blocks: string[] = [];
-  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
-  let listType: 'ul' | 'ol' | null = null;
-
-  const closeList = () => {
-    if (listType) {
-      blocks.push(`</${listType}>`);
-      listType = null;
-    }
-  };
-
-  lines.forEach((rawLine) => {
-    const line = rawLine.trim();
-    if (!line) {
-      closeList();
-      return;
-    }
-
-    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
-    if (headingMatch) {
-      closeList();
-      const level = headingMatch[1].length;
-      blocks.push(`<h${level}>${escapeHtml(headingMatch[2])}</h${level}>`);
-      return;
-    }
-
-    if (line.startsWith('> ')) {
-      closeList();
-      blocks.push(`<blockquote><p>${escapeHtml(line.slice(2))}</p></blockquote>`);
-      return;
-    }
-
-    const bulletMatch = line.match(/^[-*]\s+(.+)$/);
-    if (bulletMatch) {
-      if (listType !== 'ul') {
-        closeList();
-        blocks.push('<ul>');
-        listType = 'ul';
-      }
-      blocks.push(`<li><p>${escapeHtml(bulletMatch[1])}</p></li>`);
-      return;
-    }
-
-    const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
-    if (orderedMatch) {
-      if (listType !== 'ol') {
-        closeList();
-        blocks.push('<ol>');
-        listType = 'ol';
-      }
-      blocks.push(`<li><p>${escapeHtml(orderedMatch[1])}</p></li>`);
-      return;
-    }
-
-    closeList();
-    blocks.push(`<p>${escapeHtml(line)}</p>`);
-  });
-
-  closeList();
-  return blocks.join('');
+  return marked.parse(markdown, {
+    async: false,
+    breaks: true,
+    gfm: true,
+  }) as string;
 };
 
 const htmlToMarkdown = (html: string) => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const lines: string[] = [];
-
-  const visit = (node: Element) => {
-    const tag = node.tagName.toLowerCase();
-    const text = (node.textContent ?? '').trim();
-
-    if (!text) return;
-
-    if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
-      lines.push(`${'#'.repeat(Number(tag.slice(1)))} ${text}`);
-      return;
-    }
-
-    if (tag === 'blockquote') {
-      text.split('\n').forEach((line) => lines.push(`> ${line.trim()}`));
-      return;
-    }
-
-    if (tag === 'ul' || tag === 'ol') {
-      Array.from(node.children).forEach((child, index) => {
-        const prefix = tag === 'ul' ? '-' : `${index + 1}.`;
-        lines.push(`${prefix} ${(child.textContent ?? '').trim()}`);
-      });
-      return;
-    }
-
-    if (tag === 'p') {
-      lines.push(text);
-    }
-  };
-
-  Array.from(doc.body.children).forEach(visit);
-  return `${lines.join('\n\n')}\n`;
+  return `${turndownService.turndown(html).trim()}\n`;
 };
 
 const downloadMarkdown = (content: string) => {
@@ -270,6 +185,7 @@ const TiptapEditor = memo(function TiptapEditor({
   onExtractNode,
   isCollapsed = false,
   onOutlineOpenChange,
+  shortcuts,
 }: TiptapEditorProps) {
   const [paragraphs, setParagraphs] = useState<ParagraphEntry[]>([]);
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
@@ -513,12 +429,55 @@ const TiptapEditor = memo(function TiptapEditor({
     }
   };
 
+  useEffect(() => {
+    const handleShortcutKeyDown = (event: KeyboardEvent) => {
+      if (!editor || isCollapsed) return;
+
+      const target = event.target as Element | null;
+      const isInsideEditor = !!target?.closest('.tiptap-content');
+      const isInsideScriptPanel = !!target?.closest('[data-script-editor-root="true"]');
+      if (!isInsideEditor && !isInsideScriptPanel) return;
+
+      if (isShortcutEvent(event, shortcuts['editor.search'])) {
+        event.preventDefault();
+        setIsSearchOpen(true);
+        return;
+      }
+
+      if (isShortcutEvent(event, shortcuts['editor.toggleOutline'])) {
+        event.preventDefault();
+        setIsOutlineOpen((open) => !open);
+        return;
+      }
+
+      if (isShortcutEvent(event, shortcuts['editor.extractSelection'])) {
+        event.preventDefault();
+        handleExtractSelection();
+        return;
+      }
+
+      if (isShortcutEvent(event, shortcuts['editor.importMarkdown'])) {
+        event.preventDefault();
+        markdownInputRef.current?.click();
+        return;
+      }
+
+      if (isShortcutEvent(event, shortcuts['editor.exportMarkdown'])) {
+        event.preventDefault();
+        downloadMarkdown(htmlToMarkdown(editor.getHTML()));
+      }
+    };
+
+    window.addEventListener('keydown', handleShortcutKeyDown);
+    return () => window.removeEventListener('keydown', handleShortcutKeyDown);
+  }, [editor, handleExtractSelection, isCollapsed, shortcuts]);
+
   const jumpToOutline = (entry: OutlineEntry) => {
     editor.chain().focus().setTextSelection({ from: entry.id + 1, to: entry.id + 1 }).scrollIntoView().run();
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-white border-r border-neutral-200 overflow-hidden">
+    <div data-script-editor-root="true" className="relative flex flex-col h-full bg-white border-r border-neutral-200 overflow-hidden">
       <div className="flex min-h-0 flex-1">
         <aside
           className={`h-full shrink-0 overflow-hidden border-r border-neutral-200 bg-white/95 transition-[width,opacity] duration-300 ease-out ${
@@ -534,7 +493,7 @@ const TiptapEditor = memo(function TiptapEditor({
               <button
                 onClick={() => setIsOutlineOpen(false)}
                 className="cursor-pointer p-1.5 rounded-md text-neutral-400 hover:text-neutral-800 hover:bg-neutral-100"
-                title="关闭目录"
+                data-tooltip="关闭目录"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -565,14 +524,16 @@ const TiptapEditor = memo(function TiptapEditor({
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('bold') ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="加粗"
+          data-tooltip="加粗"
+          data-tooltip-placement="bottom"
         >
           <Bold className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('italic') ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="斜体"
+          data-tooltip="斜体"
+          data-tooltip-placement="bottom"
         >
           <Italic className="w-4 h-4" />
         </button>
@@ -580,14 +541,16 @@ const TiptapEditor = memo(function TiptapEditor({
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('heading', { level: 1 }) ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="大标题"
+          data-tooltip="大标题"
+          data-tooltip-placement="bottom"
         >
           <Heading1 className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('heading', { level: 2 }) ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="小标题"
+          data-tooltip="小标题"
+          data-tooltip-placement="bottom"
         >
           <Heading2 className="w-4 h-4" />
         </button>
@@ -595,21 +558,24 @@ const TiptapEditor = memo(function TiptapEditor({
         <button
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('bulletList') ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="无序列表"
+          data-tooltip="无序列表"
+          data-tooltip-placement="bottom"
         >
           <List className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('orderedList') ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="有序列表"
+          data-tooltip="有序列表"
+          data-tooltip-placement="bottom"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
         <button
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           className={`p-1.5 rounded-md hover:bg-neutral-200/60 transition-colors cursor-pointer ${editor.isActive('blockquote') ? 'bg-neutral-200 text-neutral-950 font-semibold' : 'text-neutral-500'}`}
-          title="引用段落"
+          data-tooltip="引用段落"
+          data-tooltip-placement="bottom"
         >
           <Quote className="w-4 h-4" />
         </button>
@@ -618,7 +584,8 @@ const TiptapEditor = memo(function TiptapEditor({
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
           className="p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 disabled:opacity-45 transition-colors cursor-pointer"
-          title="撤销"
+          data-tooltip="撤销"
+          data-tooltip-placement="bottom"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -626,7 +593,8 @@ const TiptapEditor = memo(function TiptapEditor({
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
           className="p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 disabled:opacity-45 transition-colors cursor-pointer"
-          title="重做"
+          data-tooltip="重做"
+          data-tooltip-placement="bottom"
         >
           <RotateCw className="w-4 h-4" />
         </button>
@@ -637,7 +605,8 @@ const TiptapEditor = memo(function TiptapEditor({
             onClick={handleExtractSelection}
             disabled={isSelectionEmpty}
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-neutral-800 disabled:text-neutral-400 bg-white hover:bg-neutral-100 disabled:hover:bg-white border border-neutral-200 rounded-md shadow-sm disabled:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed"
-            title="选取文本切成新的文本节点"
+            data-tooltip="选取文本切成新的文本节点"
+            data-tooltip-placement="bottom"
           >
             <Scissors className="w-3.5 h-3.5" />
             <span>选取切片</span>
@@ -645,7 +614,8 @@ const TiptapEditor = memo(function TiptapEditor({
           <button
             onClick={() => setIsToolsDrawerOpen((open) => !open)}
             className="cursor-pointer p-1.5 text-neutral-500 rounded-md hover:bg-neutral-200/60 transition-colors"
-            title="展开更多工具"
+            data-tooltip="展开更多工具"
+            data-tooltip-placement="bottom"
           >
             {isToolsDrawerOpen ? <ChevronUp className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
           </button>
@@ -730,7 +700,7 @@ const TiptapEditor = memo(function TiptapEditor({
             <button
               onClick={() => setIsSearchOpen(false)}
               className="shrink-0 rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
-              title="关闭查找替换"
+              data-tooltip="关闭查找替换"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -743,14 +713,14 @@ const TiptapEditor = memo(function TiptapEditor({
               <button
                 onClick={handleFindPrevious}
                 className="flex h-7 w-7 items-center justify-center text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                title="上一处"
+                data-tooltip="上一处"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={handleFindNext}
                 className="flex h-7 w-7 items-center justify-center border-l border-neutral-200 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
-                title="下一处"
+                data-tooltip="下一处"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -797,7 +767,7 @@ const TiptapEditor = memo(function TiptapEditor({
           <button
             onClick={(e) => { e.stopPropagation(); setIsExplorerCollapsed(!isExplorerCollapsed); }}
             className="p-0.5 hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 rounded transition-colors"
-            title={isExplorerCollapsed ? '展开管理器' : '收起管理器'}
+            data-tooltip={isExplorerCollapsed ? '展开管理器' : '收起管理器'}
           >
             {isExplorerCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -825,7 +795,7 @@ const TiptapEditor = memo(function TiptapEditor({
                   <button
                     onClick={(e) => { e.stopPropagation(); onExtractNode(p.text, `段落 ${index + 1}`); }}
                     className="p-1 text-neutral-400 hover:text-neutral-800 hover:bg-neutral-200 rounded-sm cursor-pointer opacity-80 group-hover:opacity-100 transition-all"
-                    title="生成画布节点"
+                    data-tooltip="生成画布节点"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>

@@ -1,6 +1,7 @@
 import { Film, FolderOpen, Image, Lightbulb, MoreHorizontal, Table, Type } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AutoSaveStatus, NodeType } from '../types';
+import type { ShortcutMap } from '../shortcuts';
 
 interface CanvasToolbarProps {
   isDrawerOpen: boolean;
@@ -9,6 +10,7 @@ interface CanvasToolbarProps {
   saveStatus: AutoSaveStatus;
   lastSavedAt: number | null;
   saveError: string | null;
+  shortcuts: ShortcutMap;
   onToggleMediaLibrary: () => void;
   onToggleDrawer: () => void;
   onAddNode: (type: NodeType) => void;
@@ -21,6 +23,7 @@ export default function CanvasToolbar({
   saveStatus,
   lastSavedAt,
   saveError,
+  shortcuts,
   onToggleMediaLibrary,
   onToggleDrawer,
   onAddNode,
@@ -30,25 +33,25 @@ export default function CanvasToolbar({
       <SaveStatusText status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
 
       <div className="pointer-events-auto flex cursor-default items-center gap-2 rounded-2xl border border-neutral-200/80 bg-white/90 px-2.5 py-2.5 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
-        <ToolbarIconButton title="文本" onClick={() => onAddNode('text')}>
+        <ToolbarIconButton title="文本" shortcut={shortcuts['canvas.addText']} onClick={() => onAddNode('text')}>
           <Type className="h-4 w-4" />
         </ToolbarIconButton>
-        <ToolbarIconButton title="图片" onClick={() => onAddNode('image')}>
+        <ToolbarIconButton title="图片" shortcut={shortcuts['canvas.addImage']} onClick={() => onAddNode('image')}>
           <Image className="h-4 w-4" />
         </ToolbarIconButton>
-        <ToolbarIconButton title="便签" onClick={() => onAddNode('idea')}>
+        <ToolbarIconButton title="便签" shortcut={shortcuts['canvas.addIdea']} onClick={() => onAddNode('idea')}>
           <Lightbulb className="h-4 w-4" />
         </ToolbarIconButton>
-        <ToolbarIconButton title="表格" onClick={() => onAddNode('table')}>
+        <ToolbarIconButton title="表格" shortcut={shortcuts['canvas.addTable']} onClick={() => onAddNode('table')}>
           <Table className="h-4 w-4" />
         </ToolbarIconButton>
-        <ToolbarIconButton title="轨道" onClick={() => onAddNode('timeline')}>
+        <ToolbarIconButton title="轨道" shortcut={shortcuts['canvas.addTimeline']} onClick={() => onAddNode('timeline')}>
           <Film className="h-4 w-4" />
         </ToolbarIconButton>
 
         <div className="mx-1 h-5 w-px bg-neutral-200" />
 
-        <ToolbarIconButton title="配图库" onClick={onToggleMediaLibrary} active={isMediaLibraryOpen}>
+        <ToolbarIconButton title="配图库" shortcut={shortcuts['canvas.toggleMediaLibrary']} onClick={onToggleMediaLibrary} active={isMediaLibraryOpen}>
           <span className="relative">
             <FolderOpen className="h-4 w-4" />
             {mediaAssetCount > 0 && (
@@ -59,7 +62,7 @@ export default function CanvasToolbar({
           </span>
         </ToolbarIconButton>
 
-        <ToolbarIconButton title="更多工具" onClick={onToggleDrawer} active={isDrawerOpen}>
+        <ToolbarIconButton title="更多工具" shortcut={shortcuts['canvas.toggleMoreTools']} onClick={onToggleDrawer} active={isDrawerOpen}>
           <MoreHorizontal className="h-4 w-4" />
         </ToolbarIconButton>
       </div>
@@ -76,31 +79,40 @@ export default function CanvasToolbar({
 function ToolbarIconButton({
   children,
   title,
+  shortcut,
   active = false,
   danger = false,
   onClick,
 }: {
   children: ReactNode;
   title: string;
+  shortcut?: string;
   active?: boolean;
   danger?: boolean;
   onClick: () => void;
 }) {
+  const tooltipText = shortcut ? `${title} — ${shortcut}` : title;
+
   return (
-    <button
-      onClick={onClick}
-      className={`flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 ${
-        active
-          ? 'border-neutral-200 bg-neutral-200 text-neutral-950 shadow-sm'
-          : danger
-            ? 'border-transparent text-red-500 hover:border-red-100 hover:bg-red-50'
-            : 'border-transparent text-neutral-500 hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950'
-      }`}
-      title={title}
-      aria-label={title}
-    >
-      {children}
-    </button>
+    <span className="group relative inline-flex">
+      <button
+        onClick={onClick}
+        className={`flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 ${
+          active
+            ? 'border-neutral-200 bg-neutral-200 text-neutral-950 shadow-sm'
+            : danger
+              ? 'border-transparent text-red-500 hover:border-red-100 hover:bg-red-50'
+              : 'border-transparent text-neutral-500 hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950'
+        }`}
+        aria-label={title}
+      >
+        {children}
+      </button>
+      <span className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 -translate-x-1/2 translate-y-1 rounded-[3px] bg-neutral-950 px-2.5 py-1.5 font-sans text-[12px] font-bold leading-none text-white opacity-0 shadow-lg shadow-neutral-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+        <span className="whitespace-nowrap">{tooltipText}</span>
+        <span className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[6px] border-x-transparent border-t-neutral-950" />
+      </span>
+    </span>
   );
 }
 

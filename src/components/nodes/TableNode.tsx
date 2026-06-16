@@ -178,7 +178,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
           <button
             onClick={onDelete}
             className="p-1 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded transition-colors cursor-pointer"
-            title="删除表格"
+            data-tooltip="删除表格"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -209,7 +209,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
                           deleteColumn(cIdx);
                         }}
                         className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-red-500 rounded px-1 opacity-0 group-hover/col:opacity-100 transition-opacity cursor-pointer text-[10px]"
-                        title="删除此列"
+                        data-tooltip="删除此列"
                       >
                         ✕
                       </button>
@@ -239,7 +239,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
                             deleteRow(rIdx);
                           }}
                           className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-300 hover:text-red-500 rounded px-1 opacity-0 group-hover/row:opacity-100 transition-opacity cursor-pointer text-[10px]"
-                          title="删除此行"
+                          data-tooltip="删除此行"
                         >
                           ✕
                         </button>

@@ -19,7 +19,8 @@ export default function WorkspaceHistoryControls({
         onClick={onUndo}
         disabled={!canUndo}
         className="flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:text-neutral-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-        title="撤销工作区操作"
+        data-tooltip="撤销工作区操作"
+        data-tooltip-placement="bottom"
       >
         <Undo2 className="w-4 h-4" />
       </button>
@@ -27,7 +28,8 @@ export default function WorkspaceHistoryControls({
         onClick={onRedo}
         disabled={!canRedo}
         className="flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:text-neutral-300 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
-        title="重做工作区操作"
+        data-tooltip="重做工作区操作"
+        data-tooltip-placement="bottom"
       >
         <Redo2 className="w-4 h-4" />
       </button>

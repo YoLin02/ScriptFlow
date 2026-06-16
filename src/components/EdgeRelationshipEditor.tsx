@@ -37,7 +37,7 @@ export default function EdgeRelationshipEditor({
         <button
           onClick={onDelete}
           className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100/60 p-1.5 rounded transition-colors cursor-pointer"
-          title="断开此连线"
+          data-tooltip="断开此连线"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -81,7 +81,7 @@ export default function EdgeRelationshipEditor({
                 }`}
                 onClick={() => onCustomEdgeRelationChange(tag)}
                 onDoubleClick={() => onSave(tag)}
-                title="双击直接保存该标签"
+                data-tooltip="双击直接保存该标签"
               >
                 <span>{tag}</span>
                 <button
@@ -95,7 +95,7 @@ export default function EdgeRelationshipEditor({
                   className={`text-[11px] leading-none text-neutral-400 hover:text-red-500 ml-0.5 rounded-full hover:bg-neutral-200/50 w-3.5 h-3.5 flex items-center justify-center font-bold md:opacity-0 md:group-hover:opacity-100 transition-opacity ${
                     isSelected ? 'text-white/60 hover:text-white hover:bg-white/25' : ''
                   }`}
-                  title="从标签库中删除"
+                  data-tooltip="从标签库中删除"
                 >
                   ×
                 </button>

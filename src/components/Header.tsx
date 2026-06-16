@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { 
-  BookOpen, Download, HelpCircle, Compass, MoreHorizontal, Rows3, Trash2, Upload
+  BookOpen, Download, HelpCircle, Compass, MoreHorizontal, Rows3, Trash2, Upload, Keyboard
 } from 'lucide-react';
 import { WorkspaceSaveState } from '../types';
 import { useFeedback } from './feedback/FeedbackProvider';
@@ -23,6 +23,7 @@ interface HeaderProps {
   onAutoLayout?: () => void;
   onAssembleDocument?: () => void;
   onRequestClearCanvas?: () => void;
+  onOpenShortcutSettings?: () => void;
 }
 
 const Header = memo(function Header({ 
@@ -36,7 +37,8 @@ const Header = memo(function Header({
   onMenuOpenChange,
   onAutoLayout,
   onAssembleDocument,
-  onRequestClearCanvas
+  onRequestClearCanvas,
+  onOpenShortcutSettings
 }: HeaderProps) {
   const { toast } = useFeedback();
   const [localShowMenu, setLocalShowMenu] = useState(false);
@@ -55,7 +57,7 @@ const Header = memo(function Header({
         setIsMenuOpen(false);
       }
       if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
-        const clickedHelpButton = event.target instanceof Element && event.target.closest('button') && (event.target.textContent?.includes('指南') || event.target.closest('[title="协同书写指南"]'));
+        const clickedHelpButton = event.target instanceof Element && event.target.closest('button') && (event.target.textContent?.includes('指南') || event.target.closest('[data-tooltip="协同书写指南"]'));
         if (!clickedHelpButton) {
           setShowHelp(false);
         }
@@ -111,6 +113,11 @@ const Header = memo(function Header({
     setShowHelp(true);
   };
 
+  const handleShortcutSettingsClick = () => {
+    setIsMenuOpen(false);
+    onOpenShortcutSettings?.();
+  };
+
   const handleAutoLayoutClick = () => {
     setIsMenuOpen(false);
     onAutoLayout?.();
@@ -158,7 +165,8 @@ const Header = memo(function Header({
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className={`flex items-center justify-center w-7 h-7 rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-150 bg-transparent transition-all cursor-pointer ${isMenuOpen ? 'text-neutral-900 bg-neutral-100' : ''}`}
-              title="功能菜单"
+              data-tooltip="功能菜单"
+              data-tooltip-placement="bottom"
               id="header-menu-button"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -230,6 +238,13 @@ const Header = memo(function Header({
               <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
                 系统工具
               </div>
+              <button
+                onClick={handleShortcutSettingsClick}
+                className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+              >
+                <Keyboard className="w-3.5 h-3.5 text-neutral-400" />
+                <span>快捷键设置</span>
+              </button>
               <button
                 onClick={handleHelpClick}
                 className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"

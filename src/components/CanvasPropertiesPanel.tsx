@@ -497,7 +497,7 @@ function ColorSwatches({
           className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg transition-all ${
             activeColor === color ? 'bg-neutral-200 ring-1 ring-neutral-200' : 'bg-transparent hover:bg-neutral-50'
           }`}
-          title={color}
+          data-tooltip={color}
         >
           <span
             className="h-[18px] w-[18px] rounded-full border border-transparent transition-transform"
@@ -614,7 +614,7 @@ function IconSegmentedControl({
               ? 'bg-neutral-200 text-neutral-900'
               : 'text-neutral-600 hover:bg-neutral-50'
           }`}
-          title={option.label}
+          data-tooltip={option.label}
         >
           {option.icon}
         </button>
@@ -643,7 +643,7 @@ function EdgeRouteControl({
               ? 'bg-neutral-200 text-neutral-900'
               : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900'
           }`}
-          title={option.label}
+          data-tooltip={option.label}
         >
           {option.icon}
         </button>

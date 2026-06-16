@@ -49,6 +49,7 @@ import {
   getConnectedNodeIds,
   getEdgePresentation,
 } from './flowCanvasUtils';
+import { ShortcutMap, isEditableShortcutTarget, isShortcutEvent } from '../shortcuts';
 
 interface CanvasContextMenuState {
   x: number;
@@ -60,6 +61,12 @@ interface CanvasContextMenuState {
 interface ClipboardState {
   nodes: WorkspaceNode[];
   edges: Edge[];
+}
+
+interface PendingExtractedSlice {
+  id: string;
+  text: string;
+  title?: string;
 }
 
 interface FlowCanvasProps {
@@ -81,6 +88,10 @@ interface FlowCanvasProps {
   saveStatus: AutoSaveStatus;
   lastSavedAt: number | null;
   saveError: string | null;
+  pendingExtractedSlice: PendingExtractedSlice | null;
+  onExtractedSlicePlaced: () => void;
+  shortcuts: ShortcutMap;
+  onOpenShortcutSettings: () => void;
 }
 
 export default function FlowCanvas({
@@ -102,8 +113,12 @@ export default function FlowCanvas({
   saveStatus,
   lastSavedAt,
   saveError,
+  pendingExtractedSlice,
+  onExtractedSlicePlaced,
+  shortcuts,
+  onOpenShortcutSettings,
 }: FlowCanvasProps) {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView, zoomIn, zoomOut } = useReactFlow();
   const { toast } = useFeedback();
 
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
@@ -135,6 +150,7 @@ export default function FlowCanvas({
 
   const fileFolderInputRef = useRef<HTMLInputElement>(null);
   const rightPointerRef = useRef({ active: false, startX: 0, startY: 0, moved: false });
+  const lastPlacedExtractedSliceIdRef = useRef<string | null>(null);
 
   const beginPointerPan = useCallback((clientX: number, clientY: number) => {
     rightPointerRef.current = { active: true, startX: clientX, startY: clientY, moved: false };
@@ -303,6 +319,29 @@ export default function FlowCanvas({
       };
     }
   }, [screenToFlowPosition]);
+
+  useEffect(() => {
+    if (!pendingExtractedSlice) return;
+    if (lastPlacedExtractedSliceIdRef.current === pendingExtractedSlice.id) return;
+
+    lastPlacedExtractedSliceIdRef.current = pendingExtractedSlice.id;
+    const nodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newNode: WorkspaceNode = {
+      id: nodeId,
+      type: 'text',
+      position: getCenteredNodePosition(),
+      data: {
+        id: nodeId,
+        type: 'text',
+        title: pendingExtractedSlice.title || '切片文本卡片',
+        content: pendingExtractedSlice.text,
+        createdAt: Date.now(),
+      },
+    };
+
+    setNodes((currentNodes) => [...currentNodes, newNode]);
+    onExtractedSlicePlaced();
+  }, [getCenteredNodePosition, onExtractedSlicePlaced, pendingExtractedSlice, setNodes]);
 
   const openCanvasContextMenu = useCallback((clientX: number, clientY: number) => {
     setEditingId(null);
@@ -676,11 +715,14 @@ export default function FlowCanvas({
     setContextMenu(null);
   }, [selectedNodes, edges]);
 
-  const handlePasteNodes = useCallback(() => {
-    if (!clipboard || !contextMenu) return;
+  const handlePasteNodes = useCallback((targetPosition?: { x: number; y: number }) => {
+    if (!clipboard) return;
 
     const minX = Math.min(...clipboard.nodes.map((node) => node.position.x));
     const minY = Math.min(...clipboard.nodes.map((node) => node.position.y));
+    const pastePosition = targetPosition ?? (contextMenu
+      ? { x: contextMenu.flowX, y: contextMenu.flowY }
+      : getCenteredNodePosition(0, 0));
     const idMap = new Map<string, string>();
     const stamp = Date.now();
 
@@ -692,8 +734,8 @@ export default function FlowCanvas({
         id: newId,
         selected: true,
         position: {
-          x: contextMenu.flowX + (node.position.x - minX),
-          y: contextMenu.flowY + (node.position.y - minY),
+          x: pastePosition.x + (node.position.x - minX),
+          y: pastePosition.y + (node.position.y - minY),
         },
         data: {
           ...node.data,
@@ -723,7 +765,55 @@ export default function FlowCanvas({
     setEdges((currentEdges) => [...currentEdges.map((edge) => ({ ...edge, selected: false })), ...pastedEdges]);
     setSelectedEdge(null);
     setContextMenu(null);
-  }, [clipboard, contextMenu, setNodes, setEdges]);
+  }, [clipboard, contextMenu, getCenteredNodePosition, setNodes, setEdges]);
+
+  const handleDuplicateSelectedNodes = useCallback(() => {
+    if (selectedNodes.length === 0) return;
+    const selectedIds = new Set(selectedNodes.map((node) => node.id));
+    const idMap = new Map<string, string>();
+    const stamp = Date.now();
+
+    const duplicatedNodes = selectedNodes.map((node, index) => {
+      const newId = `node-${stamp}-dup-${index}-${Math.random().toString(36).slice(2, 5)}`;
+      idMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        selected: true,
+        position: {
+          x: node.position.x + 32,
+          y: node.position.y + 32,
+        },
+        data: {
+          ...node.data,
+          id: newId,
+          createdAt: Date.now(),
+        },
+      } as WorkspaceNode;
+    });
+
+    const duplicatedEdges = edges.flatMap((edge, index) => {
+      if (!selectedIds.has(edge.source) || !selectedIds.has(edge.target)) return [];
+      const source = idMap.get(edge.source);
+      const target = idMap.get(edge.target);
+      if (!source || !target) return [];
+      return [{
+        ...edge,
+        id: `e-${stamp}-dup-${index}-${Math.random().toString(36).slice(2, 5)}`,
+        source,
+        target,
+        selected: false,
+      }];
+    });
+
+    setNodes((currentNodes) => [
+      ...currentNodes.map((node) => ({ ...node, selected: false })),
+      ...duplicatedNodes,
+    ]);
+    setEdges((currentEdges) => [...currentEdges.map((edge) => ({ ...edge, selected: false })), ...duplicatedEdges]);
+    setSelectedEdge(null);
+    setContextMenu(null);
+  }, [edges, selectedNodes, setEdges, setNodes]);
 
   const handleDeleteSelectedNodes = useCallback(() => {
     const selectedIds = new Set(selectedNodes.map((node) => node.id));
@@ -782,6 +872,98 @@ export default function FlowCanvas({
     setContextMenu(null);
   }, [selectedNodes, setNodes]);
 
+  useEffect(() => {
+    const handleShortcutKeyDown = (event: KeyboardEvent) => {
+      if (isEditableShortcutTarget(event.target)) return;
+
+      const run = (binding: string, action: () => void) => {
+        if (!isShortcutEvent(event, binding)) return false;
+        event.preventDefault();
+        event.stopPropagation();
+        action();
+        return true;
+      };
+
+      if (run(shortcuts['system.openShortcuts'], onOpenShortcutSettings)) return;
+      if (run(shortcuts['system.openMenu'], () => {
+        setIsMenuOpen((open) => !open);
+        setIsDrawerOpen(false);
+        setIsMediaLibraryOpen(false);
+      })) return;
+      if (run(shortcuts['workspace.undo'], onUndo)) return;
+      if (run(shortcuts['workspace.redo'], onRedo)) return;
+      if (run(shortcuts['canvas.addText'], () => handleAddNewNode('text'))) return;
+      if (run(shortcuts['canvas.addImage'], () => handleAddNewNode('image'))) return;
+      if (run(shortcuts['canvas.addIdea'], () => handleAddNewNode('idea'))) return;
+      if (run(shortcuts['canvas.addTable'], () => handleAddNewNode('table'))) return;
+      if (run(shortcuts['canvas.addTimeline'], () => handleAddNewNode('timeline'))) return;
+      if (run(shortcuts['canvas.toggleMediaLibrary'], () => {
+        setIsMediaLibraryOpen((open) => !open);
+        setIsDrawerOpen(false);
+        setIsMenuOpen(false);
+      })) return;
+      if (run(shortcuts['canvas.toggleMoreTools'], () => {
+        setIsDrawerOpen((open) => !open);
+        setIsMediaLibraryOpen(false);
+        setIsMenuOpen(false);
+      })) return;
+      if (run(shortcuts['selection.copy'], handleCopySelectedNodes)) return;
+      if (run(shortcuts['selection.paste'], () => handlePasteNodes())) return;
+      if (run(shortcuts['selection.delete'], () => {
+        if (selectedEdge && selectedNodes.length === 0) {
+          handleDeleteSelectedEdge();
+          return;
+        }
+        handleDeleteSelectedNodes();
+      })) return;
+      if (run(shortcuts['selection.selectAll'], () => {
+        setNodes((currentNodes) => currentNodes.map((node) => ({ ...node, selected: true })));
+        setSelectedEdge(null);
+        setContextMenu(null);
+      })) return;
+      if (run(shortcuts['selection.clear'], () => {
+        setNodes((currentNodes) => currentNodes.map((node) => ({ ...node, selected: false })));
+        setEdges((currentEdges) => currentEdges.map((edge) => ({ ...edge, selected: false })));
+        setSelectedEdge(null);
+        setContextMenu(null);
+      })) return;
+      if (run(shortcuts['canvas.fitView'], () => fitView({ padding: 0.18, duration: 220 }))) return;
+      if (run(shortcuts['canvas.zoomIn'], () => zoomIn({ duration: 160 }))) return;
+      if (run(shortcuts['canvas.zoomOut'], () => zoomOut({ duration: 160 }))) return;
+      if (run(shortcuts['canvas.autoLayout'], handleAutoLayout)) return;
+      if (run(shortcuts['canvas.clear'], () => setShowClearConfirmModal(true))) return;
+      if (run(shortcuts['batch.duplicate'], handleDuplicateSelectedNodes)) return;
+      if (run(shortcuts['batch.alignLeft'], () => alignSelectedNodes('left'))) return;
+      if (run(shortcuts['batch.alignTop'], () => alignSelectedNodes('top'))) return;
+      if (run(shortcuts['batch.distributeHorizontal'], () => distributeSelectedNodes('horizontal'))) return;
+      run(shortcuts['batch.distributeVertical'], () => distributeSelectedNodes('vertical'));
+    };
+
+    window.addEventListener('keydown', handleShortcutKeyDown);
+    return () => window.removeEventListener('keydown', handleShortcutKeyDown);
+  }, [
+    alignSelectedNodes,
+    distributeSelectedNodes,
+    fitView,
+    handleAddNewNode,
+    handleAutoLayout,
+    handleCopySelectedNodes,
+    handleDeleteSelectedEdge,
+    handleDeleteSelectedNodes,
+    handleDuplicateSelectedNodes,
+    handlePasteNodes,
+    onOpenShortcutSettings,
+    onRedo,
+    onUndo,
+    selectedEdge,
+    selectedNodes.length,
+    setEdges,
+    setNodes,
+    shortcuts,
+    zoomIn,
+    zoomOut,
+  ]);
+
   const handleUpdateNodesFromPanel = useCallback((nodeIds: string[], patch: Partial<CanvasNodeData>) => {
     const nodeIdSet = new Set(nodeIds);
     setNodes((currentNodes) =>
@@ -829,7 +1011,8 @@ export default function FlowCanvas({
     onUpdateContent: handleUpdateNodeContent,
     editingId,
     setEditingId,
-  }), [handleDeleteNode, handleUpdateNodeContent, editingId]);
+    shortcuts,
+  }), [handleDeleteNode, handleUpdateNodeContent, editingId, shortcuts]);
 
   return (
     <div className="h-full w-full bg-neutral-50 relative overflow-hidden flex flex-col">
@@ -857,6 +1040,7 @@ export default function FlowCanvas({
         onAutoLayout={handleAutoLayout}
         onAssembleDocument={handleAssembleDocument}
         onRequestClearCanvas={() => setShowClearConfirmModal(true)}
+        onOpenShortcutSettings={onOpenShortcutSettings}
       />
 
       <div
@@ -1038,6 +1222,7 @@ export default function FlowCanvas({
           saveStatus={saveStatus}
           lastSavedAt={lastSavedAt}
           saveError={saveError}
+          shortcuts={shortcuts}
           onToggleMediaLibrary={() => {
             const nextState = !isMediaLibraryOpen;
             setIsMediaLibraryOpen(nextState);

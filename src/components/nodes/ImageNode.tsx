@@ -139,7 +139,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
             <button 
               onClick={onSave}
               className="p-1 hover:bg-neutral-200 text-neutral-700 rounded transition-colors cursor-pointer"
-              title="保存"
+              data-tooltip="保存"
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -147,7 +147,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
             <button 
               onClick={() => setIsEditing(true)}
               className="p-1 hover:bg-neutral-200 text-neutral-500 hover:text-neutral-700 rounded transition-colors cursor-pointer"
-              title="重命名卡片"
+              data-tooltip="重命名卡片"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
@@ -155,7 +155,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
           <button 
             onClick={onDelete}
             className="p-1 hover:bg-red-50 text-neutral-400 hover:text-red-600 rounded transition-colors cursor-pointer"
-            title="删除图片节点"
+            data-tooltip="删除图片节点"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

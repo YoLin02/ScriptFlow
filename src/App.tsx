@@ -10,10 +10,12 @@ import { Layout, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import Header from './components/Header';
 import TiptapEditor from './components/TiptapEditor';
 import FlowCanvas from './components/FlowCanvas';
+import ShortcutSettingsPanel from './components/ShortcutSettingsPanel';
 import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from './types';
 import { quantumStoryPreset, brainstormPreset, blankPreset } from './presets';
 import { dbGet, dbSet, dbRemove } from './db';
 import { useFeedback } from './components/feedback/FeedbackProvider';
+import { DEFAULT_SHORTCUTS, SHORTCUT_STORAGE_KEY, ShortcutMap } from './shortcuts';
 
 const STORAGE_KEY = 'visual_text_flow_state';
 const MAX_HISTORY_ENTRIES = 50;
@@ -21,6 +23,12 @@ const MAX_HISTORY_ENTRIES = 50;
 interface HistoryAvailability {
   canUndo: boolean;
   canRedo: boolean;
+}
+
+interface PendingExtractedSlice {
+  id: string;
+  text: string;
+  title?: string;
 }
 
 export default function App() {
@@ -38,6 +46,17 @@ export default function App() {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [historyAvailability, setHistoryAvailability] = useState<HistoryAvailability>({ canUndo: false, canRedo: false });
+  const [pendingExtractedSlice, setPendingExtractedSlice] = useState<PendingExtractedSlice | null>(null);
+  const [shortcuts, setShortcuts] = useState<ShortcutMap>(() => {
+    try {
+      const saved = localStorage.getItem(SHORTCUT_STORAGE_KEY);
+      return saved ? { ...DEFAULT_SHORTCUTS, ...JSON.parse(saved) } : DEFAULT_SHORTCUTS;
+    } catch (error) {
+      console.warn('Failed to load shortcuts', error);
+      return DEFAULT_SHORTCUTS;
+    }
+  });
+  const [isShortcutPanelOpen, setIsShortcutPanelOpen] = useState(false);
 
   const undoStackRef = useRef<WorkspaceSaveState[]>([]);
   const redoStackRef = useRef<WorkspaceSaveState[]>([]);
@@ -134,6 +153,10 @@ export default function App() {
     }
     initWorkspace();
   }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    localStorage.setItem(SHORTCUT_STORAGE_KEY, JSON.stringify(shortcuts));
+  }, [shortcuts]);
 
   // Local Database Save Sync Effect with Debounce to prevent lag during dragging or typing
   useEffect(() => {
@@ -288,32 +311,17 @@ export default function App() {
 
   // Custom text extraction into Canvas TextNode
   const handleExtractNode = useCallback((text: string, title?: string) => {
-    const id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    
-    // Position staggered random coordinates to prevent exact stack overlapping
-    const newNode: WorkspaceNode = {
-      id,
-      type: 'text',
-      position: {
-        x: 180 + Math.random() * 120,
-        y: 150 + Math.random() * 120,
-      },
-      data: {
-        id,
-        type: 'text',
-        title: title || '切片文本卡片',
-        content: text,
-        createdAt: Date.now(),
-      },
-    };
-
-    setNodes((prev) => [...prev, newNode]);
+    setPendingExtractedSlice({
+      id: `slice-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      text,
+      title,
+    });
     
     // Auto jump viewport to show the newly added card on mobile or small devices
     if (activeTab === 'editor') {
       setActiveTab('split');
     }
-  }, [setNodes, activeTab]);
+  }, [activeTab]);
 
   const handleUpdateMainDoc = useCallback((newHtml: string) => {
     setMainDocHtml(newHtml);
@@ -347,6 +355,7 @@ export default function App() {
               onExtractNode={handleExtractNode}
               isCollapsed={isSidebarCollapsed}
               onOutlineOpenChange={setIsEditorOutlineOpen}
+              shortcuts={shortcuts}
             />
           </div>
         </div>
@@ -399,6 +408,10 @@ export default function App() {
               saveStatus={saveStatus}
               lastSavedAt={lastSavedAt}
               saveError={saveError}
+              pendingExtractedSlice={pendingExtractedSlice}
+              onExtractedSlicePlaced={() => setPendingExtractedSlice(null)}
+              shortcuts={shortcuts}
+              onOpenShortcutSettings={() => setIsShortcutPanelOpen(true)}
             />
           </ReactFlowProvider>
         </div>
@@ -429,6 +442,13 @@ export default function App() {
           </button>
         </div>
       </div>
+
+      <ShortcutSettingsPanel
+        open={isShortcutPanelOpen}
+        shortcuts={shortcuts}
+        onChange={setShortcuts}
+        onClose={() => setIsShortcutPanelOpen(false)}
+      />
     </div>
   );
 }

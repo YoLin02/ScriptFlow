@@ -12,7 +12,7 @@ export default function CanvasHintBubble({ onClose }: CanvasHintBubbleProps) {
         <button
           onClick={onClose}
           className="text-neutral-400 hover:text-neutral-700 p-0.5 hover:bg-neutral-100 rounded cursor-pointer transition-colors"
-          title="关闭指示"
+          data-tooltip="关闭指示"
         >
           ×
         </button>

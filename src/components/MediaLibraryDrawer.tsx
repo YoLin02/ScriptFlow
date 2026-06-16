@@ -110,7 +110,7 @@ export default function MediaLibraryDrawer({
                 <div
                   onClick={() => onInsertAsset(asset)}
                   className="h-20 w-full bg-neutral-100 flex items-center justify-center cursor-pointer overflow-hidden relative"
-                  title="点击将配图卡片插入到画布中"
+                  data-tooltip="点击将配图卡片插入到画布中"
                 >
                   <img
                     src={asset.url}
@@ -124,7 +124,7 @@ export default function MediaLibraryDrawer({
                 </div>
 
                 <div className="px-2 py-1.5 border-t border-neutral-150 bg-white flex items-center justify-between gap-1">
-                  <span className="text-[10px] text-neutral-700 truncate font-semibold flex-1" title={asset.name}>
+                  <span className="text-[10px] text-neutral-700 truncate font-semibold flex-1" data-tooltip={asset.name}>
                     {asset.name}
                   </span>
                   <button
@@ -142,7 +142,7 @@ export default function MediaLibraryDrawer({
                       }
                     }}
                     className="text-neutral-400 hover:text-red-650 hover:bg-neutral-50 p-1 rounded transition-colors cursor-pointer shrink-0"
-                    title="自文件夹中删除"
+                    data-tooltip="自文件夹中删除"
                   >
                     <Trash2 className="w-2.5 h-2.5" />
                   </button>

@@ -1,9 +1,10 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Handle, Position, useUpdateNodeInternals, useViewport } from '@xyflow/react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { Clock, Plus, Trash2, X } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import type { TimelineCanvasNodeData, TimelineTrackDataValue } from '../../types';
+import { eventToShortcut, isShortcutEvent, normalizeShortcut } from '../../shortcuts';
 export type { TimelineTick, TimelineTrackDataValue as TimelineTrackDataState } from '../../types';
 
 const DEFAULT_TIMELINE_DATA: TimelineTrackDataValue = {
@@ -18,7 +19,6 @@ const DEFAULT_TIMELINE_DATA: TimelineTrackDataValue = {
 };
 
 const MIN_TICK_GAP_SECONDS = 1;
-const COMPACT_MANAGER_ZOOM_THRESHOLD = 0.72;
 
 function parseTimeToSeconds(value: unknown): number | null {
   if (typeof value !== 'string') return null;
@@ -100,20 +100,10 @@ function getTimelineDataFromNode(data: TimelineCanvasNodeData): TimelineTrackDat
 }
 
 export const TimelineNode = memo(({ id, data, selected }: { id: string; data: TimelineCanvasNodeData; selected?: boolean }) => {
-  const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
+  const { onDeleteNode, onUpdateContent, shortcuts } = useContext(NodeActionContext);
   const updateNodeInternals = useUpdateNodeInternals();
-  const { zoom } = useViewport();
   const [state, setState] = useState<TimelineTrackDataValue>(() => getTimelineDataFromNode(data));
-  const [clickX, setClickX] = useState<number | null>(null);
   const [isTimelineAddMode, setIsTimelineAddMode] = useState(false);
-  const shouldUseFixedManager = zoom < COMPACT_MANAGER_ZOOM_THRESHOLD;
-
-  // Reset click offset when node is deselected
-  useEffect(() => {
-    if (!selected) {
-      setClickX(null);
-    }
-  }, [selected]);
 
   // Keep a ref of the current state so drag-and-resize events can access it safely without stale closures
   const stateRef = useRef(state);
@@ -188,7 +178,8 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
   };
 
   const updateTickSeconds = (tickId: string, nextSeconds: number) => {
-    const sortedTicks = normalizeTickOrder(state.ticks);
+    const currentState = stateRef.current;
+    const sortedTicks = normalizeTickOrder(currentState.ticks);
     const tickIndex = sortedTicks.findIndex((tick) => tick.id === tickId);
     if (tickIndex === -1) return;
 
@@ -198,10 +189,44 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       : sortedTicks[tickIndex + 1].seconds - MIN_TICK_GAP_SECONDS;
     const clampedSeconds = Math.max(minSeconds, Math.min(maxSeconds, Math.round(nextSeconds)));
     const nextTicks = sortedTicks.map((tick) => tick.id === tickId ? { ...tick, seconds: clampedSeconds } : tick);
-    const nextState = { ...state, ticks: normalizeTickOrder(nextTicks) };
+    const nextState = { ...currentState, ticks: normalizeTickOrder(nextTicks) };
     setState(nextState);
     saveStateToParent(nextState);
   };
+
+  useEffect(() => {
+    if (!state.activeTickId || !shortcuts) return;
+
+    const handleTickShortcutKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+
+      const matchesTimelineShortcut = (binding: string) => {
+        if (isShortcutEvent(event, binding)) return true;
+        if (!event.shiftKey) return false;
+        return eventToShortcut(event).replace('Shift+', '') === normalizeShortcut(binding);
+      };
+
+      const isMoveLeft = matchesTimelineShortcut(shortcuts['timeline.moveActiveTickLeft']);
+      const isMoveRight = matchesTimelineShortcut(shortcuts['timeline.moveActiveTickRight']);
+      if (!isMoveLeft && !isMoveRight) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const sortedTicks = normalizeTickOrder(stateRef.current.ticks);
+      const activeIndex = sortedTicks.findIndex((tick) => tick.id === stateRef.current.activeTickId);
+      if (activeIndex <= 0 || activeIndex >= sortedTicks.length - 1) return;
+
+      const activeTick = sortedTicks[activeIndex];
+      const stepSeconds = event.shiftKey ? 10 : 1;
+      updateTickSeconds(activeTick.id, activeTick.seconds + (isMoveLeft ? -stepSeconds : stepSeconds));
+    };
+
+    window.addEventListener('keydown', handleTickShortcutKeyDown, true);
+    return () => window.removeEventListener('keydown', handleTickShortcutKeyDown, true);
+  }, [shortcuts, state.activeTickId]);
 
   const addTickInLargestGap = () => {
     const sortedTicks = normalizeTickOrder(state.ticks);
@@ -263,18 +288,6 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
     addTickAtSeconds(startSeconds + (endSeconds - startSeconds) * clickPercent);
   };
 
-  const getPopoverLeft = () => {
-    const popoverHalfWidth = 190; // 380px / 2
-    const currentWidth = state.width || 750;
-    if (clickX === null) {
-      return '50%';
-    }
-    const minLeft = Math.min(popoverHalfWidth, currentWidth / 2);
-    const maxLeft = Math.max(currentWidth - popoverHalfWidth, currentWidth / 2);
-    const clamped = Math.max(minLeft, Math.min(maxLeft, clickX));
-    return `${clamped}px`;
-  };
-
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDeleteNode?.(id);
@@ -290,7 +303,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
         <button
           onClick={onDelete}
           className="text-red-600 hover:text-red-700 hover:bg-red-50/50 border border-red-100/40 bg-white px-2 py-1 rounded text-[10px] font-medium transition-all cursor-pointer flex items-center gap-1"
-          title="删除此时间线轨道"
+          data-tooltip="删除此时间线轨道"
         >
           <Trash2 className="w-3 h-3" />
           <span>删除轨道</span>
@@ -298,7 +311,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       </div>
 
       <div className="flex items-center justify-between text-[10px] text-neutral-500 gap-2 border-b border-neutral-100 pb-2">
-        <span>当前宽度: <span className="font-mono font-bold text-neutral-800">{state.width}px</span></span>
+        <span>当前宽度: <span className="font-sans font-bold tabular-nums text-neutral-800">{state.width}px</span></span>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-neutral-400">上方字号:</span>
           <input
@@ -315,13 +328,13 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
               saveStateToParent(nextState);
             }}
             className="w-14 h-1 bg-neutral-100 rounded-lg appearance-none cursor-ew-resize accent-neutral-800 focus:outline-none"
-            title="调节上方时刻标签字体大小"
+            data-tooltip="调节上方时刻标签字体大小"
           />
-          <span className="font-mono font-bold text-neutral-800 w-5 text-right">{state.fontSize || 12}px</span>
+          <span className="font-sans font-bold tabular-nums text-neutral-800 w-5 text-right">{state.fontSize || 12}px</span>
         </div>
       </div>
 
-      <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+      <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-0.5">
         {state.ticks.map((tick, index) => {
           const hours = Math.floor(tick.seconds / 3600);
           const minutes = Math.floor((tick.seconds % 3600) / 60);
@@ -330,8 +343,8 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           const isBoundaryTick = index === 0 || index === state.ticks.length - 1;
 
           return (
-            <div key={tick.id} className="flex items-center gap-2 border-b border-neutral-50 pb-1.5 last:border-none last:pb-0">
-              <div className="flex items-center gap-1">
+            <div key={tick.id} className="flex items-center gap-1.5 border-b border-neutral-50 pb-1.5 last:border-none last:pb-0">
+              <div className="flex items-center gap-0.5">
                 <input
                   type="number"
                   min="0"
@@ -342,10 +355,10 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                     const nextHours = Math.max(0, Number.parseInt(e.target.value || '0', 10));
                     updateTickSeconds(tick.id, nextHours * 3600 + minutes * 60 + seconds);
                   }}
-                  className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-11 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
-                  title="小时"
+                  className="timeline-time-input text-xs font-sans font-bold tabular-nums text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1 py-0.5 w-9 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                  aria-label="小时"
                 />
-                <span className="text-xs font-mono font-bold text-neutral-400">:</span>
+                <span className="text-xs font-sans font-bold text-neutral-400">:</span>
                 <input
                   type="number"
                   min="0"
@@ -357,10 +370,10 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                     const nextMinutes = Math.max(0, Math.min(59, Number.parseInt(e.target.value || '0', 10)));
                     updateTickSeconds(tick.id, hours * 3600 + nextMinutes * 60 + seconds);
                   }}
-                  className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-11 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
-                  title="分钟"
+                  className="timeline-time-input text-xs font-sans font-bold tabular-nums text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1 py-0.5 w-8 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                  aria-label="分钟"
                 />
-                <span className="text-xs font-mono font-bold text-neutral-400">:</span>
+                <span className="text-xs font-sans font-bold text-neutral-400">:</span>
                 <input
                   type="number"
                   min="0"
@@ -372,14 +385,14 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                     const nextSeconds = Math.max(0, Math.min(59, Number.parseInt(e.target.value || '0', 10)));
                     updateTickSeconds(tick.id, hours * 3600 + minutes * 60 + nextSeconds);
                   }}
-                  className="timeline-time-input text-xs font-mono font-bold text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1.5 py-0.5 w-12 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
-                  title="秒"
+                  className="timeline-time-input text-xs font-sans font-bold tabular-nums text-neutral-800 bg-neutral-50/80 hover:bg-neutral-100/60 border border-neutral-200 rounded px-1 py-0.5 w-8 text-center focus:outline-none focus:ring-1 focus:ring-neutral-400 focus:bg-white"
+                  aria-label="秒"
                 />
               </div>
-              <div className="w-24 h-1 bg-neutral-100 rounded-full overflow-hidden">
+              <div className="w-[72px] h-1 bg-neutral-100 rounded-full overflow-hidden">
                 <div className="h-full bg-neutral-800" style={{ width: `${percent}%` }} />
               </div>
-              <span className="text-[10px] font-mono text-neutral-400 w-8 text-right">{Math.round(percent)}%</span>
+              <span className="text-[10px] font-sans font-semibold tabular-nums text-neutral-400 w-7 text-right">{Math.round(percent)}%</span>
               <button
                 onClick={() => {
                   if (state.ticks.length <= 2 || isBoundaryTick) return;
@@ -391,7 +404,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                 }}
                 disabled={state.ticks.length <= 2 || isBoundaryTick}
                 className="p-1 hover:bg-red-50 text-neutral-400 hover:text-red-500 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                title={isBoundaryTick ? '头尾边界不可删除' : '移除此时刻'}
+                data-tooltip={isBoundaryTick ? '头尾边界不可删除' : '移除此时刻'}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -408,7 +421,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           <Plus className="w-3 h-3" />
           <span>添加刻度时刻</span>
         </button>
-        <span className="text-[9px] text-neutral-400 font-mono">点击时刻点高亮对应卡片</span>
+        <span className="text-[9px] text-neutral-400 font-sans font-medium">点击时刻点高亮对应卡片</span>
       </div>
     </>
   );
@@ -416,14 +429,6 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
   return (
     <div
       style={{ width: `${state.width}px` }}
-      onClick={(e) => {
-        if (e.ctrlKey && e.altKey) {
-          return;
-        }
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        setClickX(x);
-      }}
       className={`relative py-4 flex flex-col justify-end min-h-[50px] transition-all select-none ${
         selected ? 'z-50' : ''
       }`}
@@ -452,12 +457,8 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   const nextState = { ...state, activeTickId: nextActive };
                   setState(nextState);
                   saveStateToParent(nextState);
-
-                  // Set popover pointer to the selected tick
-                  const calculatedX = (tickPercent / 100) * stateRef.current.width;
-                  setClickX(calculatedX);
                 }}
-                className={`nodrag font-semibold font-mono px-2.5 py-0.5 rounded border shadow-xs transition-all cursor-pointer ${
+                className={`nodrag font-sans font-bold tabular-nums px-2.5 py-0.5 rounded border shadow-xs transition-all cursor-pointer ${
                   isActive
                     ? 'text-white bg-neutral-950 border-neutral-950 scale-105 shadow-sm'
                     : 'text-neutral-700 bg-white hover:bg-neutral-50 hover:border-neutral-300 border-neutral-200'
@@ -466,7 +467,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   fontSize: `${state.fontSize || 12}px`,
                   lineHeight: '1.2'
                 }}
-                title="选择并高亮该镜头对应的所有卡片连线"
+                data-tooltip="选择并高亮该镜头对应的所有卡片连线"
               >
                 {formatSecondsToTime(tick.seconds)}
               </button>
@@ -490,7 +491,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   transform: 'translateX(-50%) scale(1.15)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                 }}
-                title="按住此处拉去镜头对应内容卡片连线"
+                aria-label="按住此处拉去镜头对应内容卡片连线"
               />
             </div>
           );
@@ -500,7 +501,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       {/* 2. MAIN HORIZONTAL TRACK RAIL LINE */}
       <div
         className="relative w-full h-[8px] bg-neutral-900 rounded-full mt-2.5"
-        title="按住 Ctrl + Alt 点击轨道可新增时间点"
+        data-tooltip="按住 Ctrl + Alt 点击轨道可新增时间点"
       >
         <div
           className={`absolute inset-x-0 -top-4 -bottom-4 z-10 ${isTimelineAddMode ? 'pointer-events-auto cursor-copy' : 'pointer-events-none'}`}
@@ -514,39 +515,22 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           <div
             onPointerDown={handleResize}
             className="nodrag absolute -right-12 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center cursor-ew-resize bg-white rounded-full border border-neutral-300 shadow-md text-neutral-600 hover:text-neutral-950 hover:border-neutral-600 transition-colors z-20"
-            title="左右拖拽拉伸轨道长度"
+            data-tooltip="左右拖拽拉伸轨道长度"
           >
           <span className="text-[11px] font-bold">↔</span>
         </div>
       </div>
 
-      {selected && (
-        shouldUseFixedManager
-          ? createPortal(
-            <div
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              className="fixed right-4 top-24 z-[9000] w-[380px] max-w-[calc(100vw-2rem)] bg-white border border-neutral-200 shadow-2xl rounded-lg p-3.5 flex flex-col gap-3 text-left animate-in fade-in slide-in-from-right-2 duration-150"
-            >
-              {managerContent}
-            </div>,
-            document.body,
-          )
-          : (
-            <div
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                left: getPopoverLeft(),
-                transform: 'translateX(-50%)',
-              }}
-              className="nodrag absolute top-[92px] bg-white border border-neutral-200 shadow-xl rounded-lg p-3.5 w-[380px] z-50 flex flex-col gap-3 text-left animate-in fade-in duration-150"
-            >
-              {managerContent}
-            </div>
-          )
+      {selected && createPortal(
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          className="fixed right-4 top-24 z-[9000] w-[340px] max-w-[calc(100vw-2rem)] bg-white border border-neutral-200 shadow-2xl rounded-lg p-3 flex flex-col gap-2.5 text-left animate-in fade-in slide-in-from-right-2 duration-150"
+        >
+          {managerContent}
+        </div>,
+        document.body,
       )}
     </div>
   );
