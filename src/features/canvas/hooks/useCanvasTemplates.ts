@@ -3,8 +3,9 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { Edge } from '@xyflow/react';
 import type { WorkspaceNode } from '../../../types';
 import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
-import { loadCanvasTemplates, saveCanvasTemplates } from '../templates/templateStorage';
+import { loadCanvasTemplates, loadCanvasTemplatesAsync, saveCanvasTemplates } from '../templates/templateStorage';
 import type { CanvasRegionTemplate } from '../templates/types';
+import { normalizeEdgeHandles } from '../utils/normalizeEdgeHandles';
 
 interface UseCanvasTemplatesOptions {
   edges: Edge[];
@@ -54,10 +55,27 @@ export function useCanvasTemplates({
 }: UseCanvasTemplatesOptions) {
   const { confirm: askConfirm, toast } = useFeedback();
   const [templates, setTemplates] = useState<CanvasRegionTemplate[]>(() => loadCanvasTemplates());
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    loadCanvasTemplatesAsync()
+      .then((loadedTemplates) => {
+        if (mounted) setTemplates(loadedTemplates);
+      })
+      .finally(() => {
+        if (mounted) setTemplatesLoaded(true);
+      })
+      .catch((error) => console.warn('Failed to load canvas templates', error));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!templatesLoaded) return;
     saveCanvasTemplates(templates);
-  }, [templates]);
+  }, [templates, templatesLoaded]);
 
   const canSaveSelection = selectedNodes.length > 0;
 
@@ -140,6 +158,7 @@ export function useCanvasTemplates({
         selected: false,
       }];
     });
+    const normalizedNextEdges = normalizeEdgeHandles(nextNodes, nextEdges);
 
     setNodes((currentNodes) => [
       ...currentNodes.map((node) => ({ ...node, selected: false })),
@@ -147,7 +166,7 @@ export function useCanvasTemplates({
     ]);
     setEdges((currentEdges) => [
       ...currentEdges.map((edge) => ({ ...edge, selected: false })),
-      ...nextEdges,
+      ...normalizedNextEdges,
     ]);
     toast(`已插入模板：${template.name}`, 'success');
   }, [getCenteredNodePosition, setEdges, setNodes, templates, toast]);

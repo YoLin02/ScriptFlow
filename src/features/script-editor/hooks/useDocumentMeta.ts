@@ -2,6 +2,20 @@ import { useCallback, useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import type { OutlineEntry, ParagraphEntry } from '../types';
 
+function areParagraphsEqual(current: ParagraphEntry[], next: ParagraphEntry[]) {
+  if (current.length !== next.length) return false;
+  return current.every((item, index) => item.id === next[index].id && item.text === next[index].text);
+}
+
+function areOutlineEntriesEqual(current: OutlineEntry[], next: OutlineEntry[]) {
+  if (current.length !== next.length) return false;
+  return current.every((item, index) =>
+    item.id === next[index].id
+    && item.level === next[index].level
+    && item.text === next[index].text,
+  );
+}
+
 export function useDocumentMeta(editor: Editor | null) {
   const [paragraphs, setParagraphs] = useState<ParagraphEntry[]>([]);
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
@@ -26,8 +40,8 @@ export function useDocumentMeta(editor: Editor | null) {
       return true;
     });
 
-    setParagraphs(nextParagraphs);
-    setOutline(nextOutline);
+    setParagraphs((current) => areParagraphsEqual(current, nextParagraphs) ? current : nextParagraphs);
+    setOutline((current) => areOutlineEntriesEqual(current, nextOutline) ? current : nextOutline);
   }, []);
 
   const jumpToOutline = useCallback((entry: OutlineEntry) => {

@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { Edge } from '@xyflow/react';
 import type { WorkspaceNode } from '../../../types';
 import type { CanvasContextMenuState, ClipboardState } from '../types';
+import { normalizeEdgeHandles } from '../utils/normalizeEdgeHandles';
 
 interface UseCanvasClipboardOptions {
   edges: Edge[];
@@ -80,6 +81,7 @@ export function useCanvasClipboard({
         selected: false,
       }];
     });
+    const normalizedPastedEdges = normalizeEdgeHandles(pastedNodes, pastedEdges);
 
     setNodes((currentNodes) => [
       ...currentNodes.map((node) => ({ ...node, selected: false })),
@@ -87,7 +89,7 @@ export function useCanvasClipboard({
     ]);
     setEdges((currentEdges) => [
       ...currentEdges.map((edge) => ({ ...edge, selected: false })),
-      ...pastedEdges,
+      ...normalizedPastedEdges,
     ]);
     setSelectedEdge(null);
     onAfterAction?.();
@@ -132,6 +134,7 @@ export function useCanvasClipboard({
         selected: false,
       }];
     });
+    const normalizedDuplicatedEdges = normalizeEdgeHandles(duplicatedNodes, duplicatedEdges);
 
     setNodes((currentNodes) => [
       ...currentNodes.map((node) => ({ ...node, selected: false })),
@@ -139,7 +142,7 @@ export function useCanvasClipboard({
     ]);
     setEdges((currentEdges) => [
       ...currentEdges.map((edge) => ({ ...edge, selected: false })),
-      ...duplicatedEdges,
+      ...normalizedDuplicatedEdges,
     ]);
     setSelectedEdge(null);
     onAfterAction?.();

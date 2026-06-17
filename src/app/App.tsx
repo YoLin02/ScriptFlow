@@ -10,9 +10,10 @@ import { Layout, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import FlowCanvas from '../features/canvas';
 import TiptapEditor from '../features/script-editor';
 import { DEFAULT_SHORTCUTS, SHORTCUT_STORAGE_KEY, ShortcutMap, ShortcutSettingsPanel } from '../features/shortcuts';
+import { normalizeEdgeHandles } from '../features/canvas/utils/normalizeEdgeHandles';
 import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from '../types';
 import { quantumStoryPreset, brainstormPreset, blankPreset } from '../presets';
-import { dbGet, dbSet, dbRemove } from '../shared/storage/db';
+import { dbGet, dbSet, dbRemove, removeLegacyLocalStorageKeys } from '../shared/storage/db';
 import { useFeedback } from '../shared/feedback/FeedbackProvider';
 
 const STORAGE_KEY = 'visual_text_flow_state';
@@ -81,6 +82,8 @@ export default function App() {
         height: n.data.height,
         imageUrl: n.data.imageUrl,
         imageCaption: n.data.imageCaption,
+        customHandles: n.data.customHandles,
+        imageNodeDisplayMode: n.data.type === 'image' ? n.data.imageNodeDisplayMode : undefined,
         imageDisplayMode: n.data.type === 'image' ? n.data.imageDisplayMode : undefined,
         highlighted: n.data.type === 'idea' ? n.data.highlighted : undefined,
         tableData: n.data.type === 'table' ? n.data.tableData : undefined,
@@ -122,10 +125,11 @@ export default function App() {
   }, []);
 
   const restoreWorkspaceSnapshot = useCallback((snapshot: WorkspaceSaveState) => {
+    const nextNodes = ((snapshot.nodes || []) as WorkspaceNode[]);
     isRestoringHistoryRef.current = true;
     setMainDocHtml(snapshot.mainDocumentHtml || '');
-    setNodes((snapshot.nodes || []) as WorkspaceNode[]);
-    setEdges((snapshot.edges || []) as Edge[]);
+    setNodes(nextNodes);
+    setEdges(normalizeEdgeHandles(nextNodes, (snapshot.edges || []) as Edge[]));
   }, [setNodes, setEdges]);
 
   // Initialize and load saved state or defaults
@@ -134,9 +138,11 @@ export default function App() {
       try {
         const parsed = await dbGet<WorkspaceSaveState>(STORAGE_KEY);
         if (parsed) {
+          const nextNodes = ((parsed.nodes as WorkspaceNode[]) || []);
           setMainDocHtml(parsed.mainDocumentHtml || '');
-          setNodes((parsed.nodes as WorkspaceNode[]) || []);
-          setEdges((parsed.edges as Edge[]) || []);
+          setNodes(nextNodes);
+          setEdges(normalizeEdgeHandles(nextNodes, (parsed.edges as Edge[]) || []));
+          removeLegacyLocalStorageKeys();
           setIsLoaded(true);
           return;
         }
@@ -146,7 +152,8 @@ export default function App() {
       // Load default
       setMainDocHtml(quantumStoryPreset.mainDocumentHtml);
       setNodes(quantumStoryPreset.nodes as WorkspaceNode[]);
-      setEdges(quantumStoryPreset.edges as Edge[]);
+      setEdges(normalizeEdgeHandles(quantumStoryPreset.nodes as WorkspaceNode[], quantumStoryPreset.edges as Edge[]));
+      removeLegacyLocalStorageKeys();
       setIsLoaded(true);
     }
     initWorkspace();
@@ -258,9 +265,10 @@ export default function App() {
     });
 
     if (confirmed) {
+      const nextNodes = targetPreset.nodes as WorkspaceNode[];
       setMainDocHtml(targetPreset.mainDocumentHtml);
-      setNodes(targetPreset.nodes as WorkspaceNode[]);
-      setEdges(targetPreset.edges as Edge[]);
+      setNodes(nextNodes);
+      setEdges(normalizeEdgeHandles(nextNodes, targetPreset.edges as Edge[]));
     }
   }, [askConfirm, setNodes, setEdges]);
 
@@ -302,9 +310,10 @@ export default function App() {
 
   // Import State from user uploaded Backup JSON File
   const handleImportState = useCallback((state: WorkspaceSaveState) => {
+    const nextNodes = ((state.nodes || []) as WorkspaceNode[]);
     setMainDocHtml(state.mainDocumentHtml || '');
-    setNodes((state.nodes || []) as WorkspaceNode[]);
-    setEdges((state.edges || []) as Edge[]);
+    setNodes(nextNodes);
+    setEdges(normalizeEdgeHandles(nextNodes, (state.edges || []) as Edge[]));
   }, [setNodes, setEdges]);
 
   // Custom text extraction into Canvas TextNode

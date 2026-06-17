@@ -7,6 +7,12 @@ const DB_NAME = 'VisualTextFlowDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'keyValueStore';
 
+const LEGACY_LOCAL_STORAGE_KEYS = [
+  'visual_text_flow_state',
+  'canvas_media_assets',
+  'scriptflow.canvas.regionTemplates.v1',
+];
+
 function getDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
@@ -34,7 +40,8 @@ function getDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Save value to IndexedDB with a fallback to localStorage under quota protection.
+ * Save value to IndexedDB only. Large payloads such as images, templates, and
+ * workspaces must not be mirrored to localStorage.
  */
 export async function dbSet(key: string, value: any): Promise<void> {
   try {
@@ -48,18 +55,12 @@ export async function dbSet(key: string, value: any): Promise<void> {
       request.onerror = () => reject(request.error || new Error('Failed to put value'));
     });
   } catch (error) {
-    console.warn('IndexedDB write failed, falling back to localStorage safely', error);
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (localError) {
-      console.error('localStorage quota exceeded', localError);
-      // Gracefully fail instead of crashing the whole thread/React app
-    }
+    console.error('IndexedDB write failed', error);
   }
 }
 
 /**
- * Retrieve value from IndexedDB, migrating and falling back from localStorage if necessary.
+ * Retrieve value from IndexedDB, migrating legacy localStorage values if present.
  */
 export async function dbGet<T>(key: string): Promise<T | null> {
   try {
@@ -125,4 +126,15 @@ export async function dbRemove(key: string): Promise<void> {
   } catch (e) {
     // ignore
   }
+}
+
+export function removeLegacyLocalStorageKeys(keys = LEGACY_LOCAL_STORAGE_KEYS): void {
+  if (typeof localStorage === 'undefined') return;
+  keys.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  });
 }

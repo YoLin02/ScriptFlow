@@ -1,5 +1,4 @@
 import type { CanvasMediaAsset, WorkspaceNode } from '../../../types';
-import { getDefaultImageNodeDisplayMode } from './imageNodePreferences';
 
 export function getNameWithoutExtension(fileName: string) {
   return fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
@@ -16,7 +15,6 @@ export function createMediaAsset(name: string, url: string): CanvasMediaAsset {
 
 export function createImageNodeFromAsset(asset: CanvasMediaAsset, position: { x: number; y: number }): WorkspaceNode {
   const nodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-  const imageNodeDisplayMode = getDefaultImageNodeDisplayMode();
   return {
     id: nodeId,
     type: 'image',
@@ -28,8 +26,8 @@ export function createImageNodeFromAsset(asset: CanvasMediaAsset, position: { x:
       title: asset.name,
       imageUrl: asset.url,
       imageCaption: asset.name,
-      imageNodeDisplayMode,
-      imageDisplayMode: imageNodeDisplayMode === 'image-only' ? 'cover' : 'contain',
+      imageNodeDisplayMode: 'image-only',
+      imageDisplayMode: 'cover',
       width: 280,
       height: 180,
       createdAt: Date.now(),

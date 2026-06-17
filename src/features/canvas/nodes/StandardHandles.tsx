@@ -1,6 +1,5 @@
-import { memo, useContext } from 'react';
+import { memo, useContext, useEffect, useMemo } from 'react';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
-import { useEffect } from 'react';
 import { NodeActionContext } from './NodeActionContext';
 import type { CanvasNodeHandleData } from '../../../types';
 
@@ -20,10 +19,14 @@ function getCustomHandleStyle(handle: CanvasNodeHandleData) {
 const StandardHandles = memo(({ nodeId, customHandles = [] }: { nodeId: string; customHandles?: CanvasNodeHandleData[] }) => {
   const { onDeleteCustomHandle } = useContext(NodeActionContext);
   const updateNodeInternals = useUpdateNodeInternals();
+  const handleSignature = useMemo(
+    () => customHandles.map((handle) => `${handle.id}:${handle.side}:${handle.offset}`).join('|'),
+    [customHandles],
+  );
 
   useEffect(() => {
     updateNodeInternals(nodeId);
-  }, [customHandles, nodeId, updateNodeInternals]);
+  }, [handleSignature, nodeId, updateNodeInternals]);
 
   return (
     <>

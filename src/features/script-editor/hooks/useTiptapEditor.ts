@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import type { Editor } from '@tiptap/core';
@@ -17,6 +17,22 @@ export function useTiptapEditor({
   onSelectionChange,
   onDocumentChange,
 }: UseTiptapEditorOptions) {
+  const onChangeRef = useRef(onChange);
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  const onDocumentChangeRef = useRef(onDocumentChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    onSelectionChangeRef.current = onSelectionChange;
+  }, [onSelectionChange]);
+
+  useEffect(() => {
+    onDocumentChangeRef.current = onDocumentChange;
+  }, [onDocumentChange]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -28,24 +44,24 @@ export function useTiptapEditor({
     ],
     content,
     onSelectionUpdate: ({ editor: currentEditor }) => {
-      onSelectionChange(currentEditor);
+      onSelectionChangeRef.current(currentEditor);
     },
     onUpdate: ({ editor: currentEditor }) => {
-      onChange(currentEditor.getHTML());
-      onDocumentChange(currentEditor);
+      onChangeRef.current(currentEditor.getHTML());
+      onDocumentChangeRef.current(currentEditor);
     },
   });
 
   useEffect(() => {
     if (!editor || content === editor.getHTML()) return;
-    editor.commands.setContent(content);
-    onDocumentChange(editor);
-  }, [content, editor, onDocumentChange]);
+    editor.commands.setContent(content, { emitUpdate: false });
+    onDocumentChangeRef.current(editor);
+  }, [content, editor]);
 
   useEffect(() => {
     if (!editor) return;
-    onDocumentChange(editor);
-  }, [editor, onDocumentChange]);
+    onDocumentChangeRef.current(editor);
+  }, [editor]);
 
   return editor;
 }

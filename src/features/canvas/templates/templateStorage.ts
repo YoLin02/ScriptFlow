@@ -1,3 +1,4 @@
+import { dbGet, dbSet } from '../../../shared/storage/db';
 import type { CanvasRegionTemplate } from './types';
 
 const TEMPLATE_STORAGE_KEY = 'scriptflow.canvas.regionTemplates.v1';
@@ -22,11 +23,26 @@ function parseTemplates(raw: string | null): CanvasRegionTemplate[] {
 }
 
 export function loadCanvasTemplates(): CanvasRegionTemplate[] {
-  if (typeof window === 'undefined') return [];
-  return parseTemplates(window.localStorage.getItem(TEMPLATE_STORAGE_KEY));
+  return [];
 }
 
 export function saveCanvasTemplates(templates: CanvasRegionTemplate[]) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+  dbSet(TEMPLATE_STORAGE_KEY, templates).catch((error) => {
+    console.warn('Failed to persist canvas templates', error);
+  });
+}
+
+export async function loadCanvasTemplatesAsync(): Promise<CanvasRegionTemplate[]> {
+  if (typeof window === 'undefined') return [];
+  const indexedTemplates = await dbGet<CanvasRegionTemplate[]>(TEMPLATE_STORAGE_KEY);
+  if (Array.isArray(indexedTemplates)) return indexedTemplates;
+  const legacyTemplates = parseTemplates(window.localStorage.getItem(TEMPLATE_STORAGE_KEY));
+  if (legacyTemplates.length > 0) {
+    await dbSet(TEMPLATE_STORAGE_KEY, legacyTemplates);
+    try {
+      window.localStorage.removeItem(TEMPLATE_STORAGE_KEY);
+    } catch {}
+  }
+  return legacyTemplates;
 }

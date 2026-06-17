@@ -70,11 +70,6 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
     }
   };
 
-  const handleCaptionChange = (newCaption: string) => {
-    setCaption(newCaption);
-    onUpdateContent?.(id, data.content, titleVal, imageUrl, newCaption);
-  };
-
   // Automate saving on dismiss of edit mode
   const wasEditing = useRef(false);
   useEffect(() => {
@@ -242,13 +237,6 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
                 更换图片
               </button>
             </div>
-            <input
-              type="text"
-              value={caption}
-              placeholder="添加图片批注或说明..."
-              onChange={(e) => handleCaptionChange(e.target.value)}
-              className="shrink-0 w-full text-xs text-neutral-500 bg-neutral-50 hover:bg-neutral-100/50 focus:bg-white border border-transparent focus:border-neutral-200 px-2 py-1 rounded focus:outline-none"
-            />
           </div>
         ) : (
           <div className="flex min-h-[120px] w-full flex-col items-center justify-center rounded border border-dashed border-neutral-200 bg-neutral-50/50 p-4 transition-colors hover:border-neutral-300">
