@@ -2,7 +2,6 @@
 
 本文件记录 ScriptFlow 的主要版本变化。
 
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循项目当前发布记录。
 
 ## [Unreleased]
 
