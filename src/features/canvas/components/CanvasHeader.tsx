@@ -17,10 +17,8 @@ import {
 } from '../utils/imageNodePreferences';
 
 interface CanvasHeaderProps {
-  onLoadPreset: (presetName: string) => void;
   onExportState: () => void;
   onImportState: (state: WorkspaceSaveState) => void;
-  onResetWorkspace: () => void;
   leadingActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   menuOpen?: boolean;
@@ -32,10 +30,8 @@ interface CanvasHeaderProps {
 }
 
 const CanvasHeader = memo(function CanvasHeader({ 
-  onLoadPreset, 
   onExportState, 
   onImportState, 
-  onResetWorkspace,
   leadingActions,
   rightActions,
   menuOpen,
@@ -94,11 +90,6 @@ const CanvasHeader = memo(function CanvasHeader({
     }
   };
 
-  const handleSelectPreset = (presetName: string) => {
-    onLoadPreset(presetName);
-    setIsMenuOpen(false);
-  };
-
   const handleImportClick = () => {
     setIsMenuOpen(false);
     fileInputRef.current?.click();
@@ -107,11 +98,6 @@ const CanvasHeader = memo(function CanvasHeader({
   const handleExportClick = () => {
     setIsMenuOpen(false);
     onExportState();
-  };
-
-  const handleResetClick = () => {
-    setIsMenuOpen(false);
-    onResetWorkspace();
   };
 
   const handleHelpClick = () => {

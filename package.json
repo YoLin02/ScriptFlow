@@ -11,27 +11,23 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.14",
     "@tiptap/pm": "^3.25.0",
     "@tiptap/react": "^3.25.0",
     "@tiptap/starter-kit": "^3.25.0",
-    "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.11.0",
     "lucide-react": "^0.546.0",
     "marked": "^18.0.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "turndown": "^7.2.4",
-    "vite": "^6.2.3"
+    "turndown": "^7.2.4"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.14.0",
     "@types/turndown": "^5.0.6",
-    "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
+    "@vitejs/plugin-react": "^5.2.0",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.4.3"
   }
 }

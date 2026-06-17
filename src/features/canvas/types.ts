@@ -42,10 +42,8 @@ export interface FlowCanvasProps {
   setNodes: Dispatch<SetStateAction<WorkspaceNode[]>>;
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   onUpdateMainDocument: (newHtml: string) => void;
-  onLoadPreset: (presetName: string) => void;
   onExportState: () => void;
   onImportState: (state: WorkspaceSaveState) => void;
-  onResetWorkspace: () => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;

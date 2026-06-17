@@ -12,12 +12,11 @@ import TiptapEditor from '../features/script-editor';
 import { DEFAULT_SHORTCUTS, SHORTCUT_STORAGE_KEY, ShortcutMap, ShortcutSettingsPanel } from '../features/shortcuts';
 import { normalizeEdgeHandles } from '../features/canvas/utils/normalizeEdgeHandles';
 import { AutoSaveStatus, WorkspaceSaveState, WorkspaceNode, NodeType } from '../types';
-import { quantumStoryPreset, brainstormPreset, blankPreset } from '../presets';
-import { dbGet, dbSet, dbRemove, removeLegacyLocalStorageKeys } from '../shared/storage/db';
-import { useFeedback } from '../shared/feedback/FeedbackProvider';
+import { dbGet, dbSet, removeLegacyLocalStorageKeys } from '../shared/storage/db';
 
 const STORAGE_KEY = 'visual_text_flow_state';
 const MAX_HISTORY_ENTRIES = 50;
+const EMPTY_DOCUMENT_HTML = '<h1>开始书写</h1><p>在此输入草稿，或从段落切片管理器将内容转化为卡片节点。</p>';
 
 interface HistoryAvailability {
   canUndo: boolean;
@@ -31,7 +30,6 @@ interface PendingExtractedSlice {
 }
 
 export default function App() {
-  const { confirm: askConfirm } = useFeedback();
   const [mainDocHtml, setMainDocHtml] = useState<string>('');
   const [nodes, setNodes, onNodesChange] = useNodesState<WorkspaceNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -149,10 +147,9 @@ export default function App() {
       } catch (e) {
         console.error('Failed to load storage state', e);
       }
-      // Load default
-      setMainDocHtml(quantumStoryPreset.mainDocumentHtml);
-      setNodes(quantumStoryPreset.nodes as WorkspaceNode[]);
-      setEdges(normalizeEdgeHandles(quantumStoryPreset.nodes as WorkspaceNode[], quantumStoryPreset.edges as Edge[]));
+      setMainDocHtml(EMPTY_DOCUMENT_HTML);
+      setNodes([]);
+      setEdges([]);
       removeLegacyLocalStorageKeys();
       setIsLoaded(true);
     }
@@ -246,51 +243,6 @@ export default function App() {
     restoreWorkspaceSnapshot(cloneWorkspaceSnapshot(nextSnapshot));
     updateHistoryAvailability();
   }, [cloneWorkspaceSnapshot, createWorkspaceSnapshot, restoreWorkspaceSnapshot, updateHistoryAvailability]);
-
-  // Handle Preset Load
-  const handleLoadPreset = useCallback(async (presetName: string) => {
-    let targetPreset = quantumStoryPreset;
-    if (presetName === 'brainstorm') {
-      targetPreset = brainstormPreset;
-    } else if (presetName === 'blank') {
-      targetPreset = blankPreset;
-    }
-
-    const confirmed = await askConfirm({
-      title: '加载预设模板',
-      message: '加载该预设模板将覆盖当前工作区内容，确定继续吗？',
-      confirmText: '加载预设',
-      cancelText: '取消',
-      destructive: true,
-    });
-
-    if (confirmed) {
-      const nextNodes = targetPreset.nodes as WorkspaceNode[];
-      setMainDocHtml(targetPreset.mainDocumentHtml);
-      setNodes(nextNodes);
-      setEdges(normalizeEdgeHandles(nextNodes, targetPreset.edges as Edge[]));
-    }
-  }, [askConfirm, setNodes, setEdges]);
-
-  // Reset entire Workspace
-  const handleResetWorkspace = useCallback(async () => {
-    const confirmed = await askConfirm({
-      title: '清空工作区',
-      message: '确定要清空整张文档及全部卡片内容吗？这个操作会移除当前本地保存的进度。',
-      confirmText: '清空',
-      cancelText: '取消',
-      destructive: true,
-    });
-
-    if (confirmed) {
-      setMainDocHtml('<h1>开始全新的书写...</h1><p>在此输入草稿，或从段落切片管理器点击 ➔ 将其转化为卡片节点。</p>');
-      setNodes([]);
-      setEdges([]);
-      await dbRemove(STORAGE_KEY);
-      setLastSavedAt(Date.now());
-      setSaveStatus('saved');
-    }
-  }, [askConfirm, setNodes, setEdges]);
 
   // Export current State Obj as a backup JSON File
   const handleExportState = useCallback(() => {
@@ -405,10 +357,8 @@ export default function App() {
               setNodes={setNodes}
               setEdges={setEdges}
               onUpdateMainDocument={handleUpdateMainDoc}
-              onLoadPreset={handleLoadPreset}
               onExportState={handleExportState}
               onImportState={handleImportState}
-              onResetWorkspace={handleResetWorkspace}
               canUndo={historyAvailability.canUndo}
               canRedo={historyAvailability.canRedo}
               onUndo={handleUndoWorkspace}

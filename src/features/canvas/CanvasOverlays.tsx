@@ -21,10 +21,8 @@ import type {
 
 interface CanvasOverlaysProps {
   header: {
-    onLoadPreset: (presetName: string) => void;
     onExportState: () => void;
     onImportState: (state: WorkspaceSaveState) => void;
-    onResetWorkspace: () => void;
     canUndo: boolean;
     canRedo: boolean;
     onUndo: () => void;
@@ -98,10 +96,8 @@ export default function CanvasOverlays({
   return (
     <>
       <CanvasHeader
-        onLoadPreset={header.onLoadPreset}
         onExportState={header.onExportState}
         onImportState={header.onImportState}
-        onResetWorkspace={header.onResetWorkspace}
         menuOpen={header.menuOpen}
         onMenuOpenChange={header.onMenuOpenChange}
         leadingActions={(

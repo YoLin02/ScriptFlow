@@ -25,10 +25,8 @@ export default function FlowCanvas({
   setNodes,
   setEdges,
   onUpdateMainDocument,
-  onLoadPreset,
   onExportState,
   onImportState,
-  onResetWorkspace,
   canUndo,
   canRedo,
   onUndo,
@@ -324,10 +322,8 @@ export default function FlowCanvas({
 
         <CanvasOverlays
           header={{
-            onLoadPreset,
             onExportState,
             onImportState,
-            onResetWorkspace,
             canUndo,
             canRedo,
             onUndo,
