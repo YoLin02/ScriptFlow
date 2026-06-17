@@ -1,8 +1,12 @@
 # ScriptFlow
 
-ScriptFlow 是一个面向写作、脚本策划、内容拆解和非线性结构梳理的可视化文本工作台。它将左侧的长文本富文本编辑器与右侧的节点画布结合在一起，支持把正文段落拆分成卡片，并通过连线、标签、图片、表格和时间轴来组织内容关系。
+面向编导、写作者和内容策划的可视化脚本 / 文本结构化画布工具。
 
-项目为纯前端静态应用，构建后可直接部署到 Nginx、GitHub Pages、Vercel、Netlify、Cloudflare Pages、对象存储或任意静态资源服务器中，不依赖后端服务。
+在线体验：https://flow.yolin02.top/
+当前状态：Production Beta / 单人本地版
+
+<img width="2152" height="1383" alt="image" src="https://github.com/user-attachments/assets/f3ee50ec-0678-49cf-9fdd-93943eb9e3a6" />
+
 
 ## 功能特性
 
