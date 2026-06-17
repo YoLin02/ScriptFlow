@@ -3,6 +3,7 @@ import { Check, Edit3, Image as ImageIcon, Plus, Trash2, Upload } from 'lucide-r
 import { NodeActionContext } from './NodeActionContext';
 import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
+import { useDynamicHandleClick } from './useDynamicHandleClick';
 import type { ImageCanvasNodeData } from '../../../types';
 
 export const ImageNode = memo(({ id, data, selected }: { id: string; data: ImageCanvasNodeData; selected?: boolean }) => {
@@ -20,7 +21,15 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
   const [tempUrl, setTempUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
-  const imageDisplayMode = data.imageDisplayMode || 'contain';
+  const handleDynamicHandleClick = useDynamicHandleClick(id);
+  const imageNodeDisplayMode = data.imageNodeDisplayMode || 'image-only';
+  const imageDisplayMode = data.imageDisplayMode || (imageNodeDisplayMode === 'image-only' ? 'cover' : 'contain');
+  const imageClassName = imageDisplayMode === 'cover'
+    ? 'h-full w-full object-cover'
+    : imageDisplayMode === 'original'
+      ? 'max-h-full max-w-full object-contain'
+      : 'max-h-full max-w-full object-contain';
+  const isPureImageMode = imageNodeDisplayMode === 'image-only' && !!imageUrl;
 
   // Sync state with outer modifications
   useEffect(() => {
@@ -98,6 +107,61 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
     onDeleteNode?.(id);
   };
 
+  if (isPureImageMode) {
+    return (
+      <div
+        ref={nodeRef}
+        className={`group relative flex rounded-lg border bg-white text-left transition-all ${
+          selected
+            ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800'
+            : 'shadow-sm border-neutral-200/80 hover:border-neutral-300'
+        }`}
+        style={{
+          width: `${data.width || 280}px`,
+          height: `${data.height || 180}px`,
+          backgroundColor: data.color || undefined,
+        }}
+        onDoubleClick={() => setIsEditing(true)}
+        onClickCapture={handleDynamicHandleClick}
+      >
+        <CardResizeControls id={id} selected={selected} minWidth={160} minHeight={110} />
+        <StandardHandles nodeId={id} customHandles={data.customHandles} />
+
+        <div className="h-full w-full overflow-hidden rounded-[inherit]">
+          <img
+            src={imageUrl}
+            alt={caption || titleVal || '图片节点'}
+            referrerPolicy="no-referrer"
+            className={imageClassName}
+          />
+        </div>
+
+        <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            onClick={() => {
+              setImageUrl('');
+              if (fileInputRef.current) fileInputRef.current.value = '';
+              onUpdateContent?.(id, data.content, titleVal, '', caption);
+            }}
+            className="rounded-md bg-white/90 px-2 py-1 text-[10px] font-semibold text-neutral-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+            data-tooltip="更换图片"
+            data-tooltip-placement="bottom"
+          >
+            更换
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-white/90 text-neutral-400 shadow-sm backdrop-blur-sm transition-colors hover:bg-red-50 hover:text-red-600"
+            data-tooltip="删除图片节点"
+            data-tooltip-placement="bottom"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       ref={nodeRef}
@@ -107,13 +171,14 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
           : 'shadow-sm border-neutral-200/80 hover:border-neutral-300'
       }`}
       style={{
-        width: data.width ? `${data.width}px` : undefined,
+        width: `${data.width || 280}px`,
         height: data.height ? `${data.height}px` : undefined,
         backgroundColor: data.color || undefined,
       }}
+      onClickCapture={handleDynamicHandleClick}
     >
       <CardResizeControls id={id} selected={selected} minWidth={240} minHeight={150} />
-      <StandardHandles />
+      <StandardHandles nodeId={id} customHandles={data.customHandles} />
 
       {/* Node Header */}
       <div className="flex shrink-0 items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
@@ -168,11 +233,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
                 src={imageUrl} 
                 alt="Uploaded resource" 
                 referrerPolicy="no-referrer"
-                className={imageDisplayMode === 'cover'
-                  ? 'h-full w-full object-cover'
-                  : imageDisplayMode === 'original'
-                    ? 'max-h-full max-w-full object-contain'
-                    : 'max-h-full max-w-full object-contain'}
+                className={imageClassName}
               />
               <button
                 onClick={() => { setImageUrl(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}

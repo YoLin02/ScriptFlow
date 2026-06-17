@@ -187,10 +187,19 @@ export default function FlowCanvas({
   const nodeActionContextValue = useMemo(() => ({
     onDeleteNode: nodeCommands.deleteNode,
     onUpdateContent: nodeCommands.updateContent,
+    onAddCustomHandle: nodeCommands.addCustomHandle,
+    onDeleteCustomHandle: nodeCommands.deleteCustomHandle,
     editingId,
     setEditingId,
     shortcuts,
-  }), [editingId, nodeCommands.deleteNode, nodeCommands.updateContent, shortcuts]);
+  }), [
+    editingId,
+    nodeCommands.addCustomHandle,
+    nodeCommands.deleteCustomHandle,
+    nodeCommands.deleteNode,
+    nodeCommands.updateContent,
+    shortcuts,
+  ]);
 
   const viewportHandlers: ViewportHandlers = {
     onConnect: edgeCommands.onConnect,

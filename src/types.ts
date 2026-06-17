@@ -34,6 +34,12 @@ export interface TimelineTrackDataValue {
   fontSize?: number;
 }
 
+export interface CanvasNodeHandleData {
+  id: string;
+  side: 'top' | 'right' | 'bottom' | 'left';
+  offset: number;
+}
+
 interface BaseCanvasNodeData extends Record<string, unknown> {
   id: string;
   type: NodeType;
@@ -46,6 +52,7 @@ interface BaseCanvasNodeData extends Record<string, unknown> {
   height?: number;
   imageUrl?: string;
   imageCaption?: string;
+  customHandles?: CanvasNodeHandleData[];
   createdAt: number;
 }
 
@@ -57,6 +64,7 @@ export interface ImageCanvasNodeData extends BaseCanvasNodeData {
   type: 'image';
   imageUrl?: string;
   imageCaption?: string;
+  imageNodeDisplayMode?: 'image-only' | 'image-card';
   imageDisplayMode?: 'contain' | 'cover' | 'original';
 }
 

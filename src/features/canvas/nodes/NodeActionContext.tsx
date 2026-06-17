@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { CanvasNodeData } from '../../../types';
+import type { CanvasNodeData, CanvasNodeHandleData } from '../../../types';
 import type { ShortcutMap } from '../../shortcuts';
 
 export interface NodeActionContextProps {
@@ -12,6 +12,8 @@ export interface NodeActionContextProps {
     imageCaption?: string,
     extraData?: Partial<CanvasNodeData>,
   ) => void;
+  onAddCustomHandle?: (nodeId: string, handle: CanvasNodeHandleData) => void;
+  onDeleteCustomHandle?: (nodeId: string, handleId: string) => void;
   editingId?: string | null;
   setEditingId?: (id: string | null) => void;
   shortcuts?: ShortcutMap;

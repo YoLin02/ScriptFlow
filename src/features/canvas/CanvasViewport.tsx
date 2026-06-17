@@ -1,13 +1,16 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   PanOnScrollMode,
   ReactFlow,
   SelectionMode,
+  useReactFlow,
 } from '@xyflow/react';
 import type { Edge, NodeTypes } from '@xyflow/react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { WorkspaceNode } from '../../types';
 import type { FlowCanvasProps, ViewportHandlers } from './types';
 
@@ -30,6 +33,24 @@ export default function CanvasViewport({
   viewportHandlers,
   isPanningByPointer,
 }: CanvasViewportProps) {
+  const [isDynamicHandleMode, setIsDynamicHandleMode] = useState(false);
+
+  useEffect(() => {
+    const syncModifierState = (event: KeyboardEvent) => {
+      setIsDynamicHandleMode(event.ctrlKey && event.altKey);
+    };
+    const resetModifierState = () => setIsDynamicHandleMode(false);
+
+    window.addEventListener('keydown', syncModifierState);
+    window.addEventListener('keyup', syncModifierState);
+    window.addEventListener('blur', resetModifierState);
+    return () => {
+      window.removeEventListener('keydown', syncModifierState);
+      window.removeEventListener('keyup', syncModifierState);
+      window.removeEventListener('blur', resetModifierState);
+    };
+  }, []);
+
   return (
     <ReactFlow
       nodes={nodes}
@@ -53,7 +74,7 @@ export default function CanvasViewport({
       onNodeContextMenu={viewportHandlers.onNodeContextMenu}
       onEdgeContextMenu={viewportHandlers.onEdgeContextMenu}
       fitView
-      className={`bg-white ${isPanningByPointer ? 'is-pointer-panning' : ''}`}
+      className={`bg-white ${isPanningByPointer ? 'is-pointer-panning' : ''} ${isDynamicHandleMode ? 'is-dynamic-handle-mode' : ''}`}
       onPointerDown={viewportHandlers.onPointerDown}
       onPointerMove={viewportHandlers.onPointerMove}
       onPointerUp={viewportHandlers.onPointerUp}
@@ -66,20 +87,7 @@ export default function CanvasViewport({
         gap={39}
         size={1.35}
       />
-      <Controls
-        position="bottom-right"
-        style={{
-          bottom: 115,
-          right: 16,
-          margin: 0,
-          boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
-          border: '1px solid #e0e0e0',
-          borderRadius: '6px',
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          padding: '2px',
-        }}
-        showInteractive={false}
-      />
+      <CanvasViewportControls />
       <MiniMap
         nodeColor={(node) => {
           if (node.type === 'text') return '#f5f5f5';
@@ -102,5 +110,46 @@ export default function CanvasViewport({
         position="bottom-right"
       />
     </ReactFlow>
+  );
+}
+
+function CanvasViewportControls() {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+  return (
+    <div className="absolute bottom-[115px] right-4 z-20 flex flex-col overflow-visible rounded-md border border-neutral-200 bg-white/95 p-0.5 shadow-sm backdrop-blur-sm">
+      <ViewportControlButton label="放大" onClick={() => zoomIn({ duration: 180 })}>
+        <Plus className="h-4 w-4" />
+      </ViewportControlButton>
+      <ViewportControlButton label="缩小" onClick={() => zoomOut({ duration: 180 })}>
+        <Minus className="h-4 w-4" />
+      </ViewportControlButton>
+      <ViewportControlButton label="适配视图" onClick={() => fitView({ duration: 220, padding: 0.2 })}>
+        <Maximize2 className="h-4 w-4" />
+      </ViewportControlButton>
+    </div>
+  );
+}
+
+function ViewportControlButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      data-tooltip={label}
+      data-tooltip-placement="left"
+      className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-950"
+    >
+      {children}
+    </button>
   );
 }

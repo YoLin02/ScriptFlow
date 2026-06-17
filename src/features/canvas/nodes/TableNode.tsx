@@ -3,6 +3,7 @@ import { Plus, Table, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
+import { useDynamicHandleClick } from './useDynamicHandleClick';
 import type { TableCanvasNodeData, TableCellSelection, TableNodeDataValue, TableTextAlign } from '../../../types';
 
 const DEFAULT_TABLE_DATA: TableNodeDataValue = {
@@ -50,6 +51,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
   const { onDeleteNode, onUpdateContent } = useContext(NodeActionContext);
   const [titleVal, setTitleVal] = useState(data.title || '自定义表格');
   const [table, setTable] = useState<TableNodeDataValue>(() => getTableDataFromNode(data));
+  const handleDynamicHandleClick = useDynamicHandleClick(id);
 
   useEffect(() => {
     const nextTable = getTableDataFromNode(data);
@@ -158,9 +160,10 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
         height: data.height ? `${data.height}px` : undefined,
         backgroundColor: data.color || undefined,
       }}
+      onClickCapture={handleDynamicHandleClick}
     >
       <CardResizeControls id={id} selected={selected} minWidth={300} minHeight={160} />
-      <StandardHandles />
+      <StandardHandles nodeId={id} customHandles={data.customHandles} />
 
       {/* Node Header */}
       <div className="flex shrink-0 items-center justify-between px-3 py-2 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">

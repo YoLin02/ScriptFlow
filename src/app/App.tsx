@@ -374,7 +374,8 @@ export default function App() {
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="flex items-center justify-center w-5 h-10 bg-white hover:bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-200 shadow-md rounded-r-md transition-all cursor-pointer select-none -ml-px"
-            title={isSidebarCollapsed ? "展开主编辑器" : "折叠主编辑器"}
+            data-tooltip={isSidebarCollapsed ? "展开主编辑器" : "折叠主编辑器"}
+            data-tooltip-placement="right"
           >
             {isSidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>

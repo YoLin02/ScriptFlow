@@ -141,6 +141,46 @@ export function useCanvasNodeCommands({
     );
   }, [setNodes]);
 
+  const addCustomHandle = useCallback((nodeId: string, handle: NonNullable<CanvasNodeData['customHandles']>[number]) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== nodeId) return node;
+        const currentHandles = node.data.customHandles || [];
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            customHandles: [...currentHandles, handle],
+          },
+        } as WorkspaceNode;
+      }),
+    );
+  }, [setNodes]);
+
+  const deleteCustomHandle = useCallback((nodeId: string, handleId: string) => {
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== nodeId) return node;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            customHandles: (node.data.customHandles || []).filter((handle) => handle.id !== handleId),
+          },
+        } as WorkspaceNode;
+      }),
+    );
+
+    setEdges((currentEdges) =>
+      currentEdges.filter((edge) =>
+        !(
+          (edge.source === nodeId && edge.sourceHandle?.startsWith(`${handleId}-`)) ||
+          (edge.target === nodeId && edge.targetHandle?.startsWith(`${handleId}-`))
+        ),
+      ),
+    );
+  }, [setEdges, setNodes]);
+
   const onNodeDragStop = useCallback((_: unknown, node: WorkspaceNode) => {
     if (node.type !== 'timeline') return;
 
@@ -226,6 +266,8 @@ export function useCanvasNodeCommands({
     deleteSelectedNodes,
     updateNodesFromPanel,
     resizeNodesFromPanel,
+    addCustomHandle,
+    deleteCustomHandle,
     onNodeDragStop,
     autoLayout,
     alignSelectedNodes,

@@ -5,6 +5,7 @@ import { dbGet, dbSet } from '../../../shared/storage/db';
 import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 import { CANVAS_MEDIA_ASSETS_KEY } from '../constants';
 import { createImageNodeFromAsset, createMediaAsset, getImageExtension } from '../utils/mediaAssetUtils';
+import { getDefaultImageNodeDisplayMode } from '../utils/imageNodePreferences';
 
 interface UseCanvasMediaLibraryOptions {
   setNodes: Dispatch<SetStateAction<WorkspaceNode[]>>;
@@ -73,6 +74,7 @@ export function useCanvasMediaLibrary({
     setNodes((currentNodes) => {
       const selectedNode = currentNodes.find((node) => node.selected);
       if (selectedNode) {
+        const imageNodeDisplayMode = getDefaultImageNodeDisplayMode();
         return currentNodes.map((node) => {
           if (node.id !== selectedNode.id) return node;
           return {
@@ -84,6 +86,10 @@ export function useCanvasMediaLibrary({
               imageUrl: asset.url,
               title: asset.name,
               imageCaption: asset.name,
+              imageNodeDisplayMode,
+              imageDisplayMode: imageNodeDisplayMode === 'image-only' ? 'cover' : 'contain',
+              width: node.data.width || 280,
+              height: node.data.height || 180,
             },
           } as WorkspaceNode;
         });

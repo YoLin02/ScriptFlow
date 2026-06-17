@@ -5,11 +5,16 @@
 
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { 
-  BookOpen, Download, HelpCircle, Compass, MoreHorizontal, Rows3, Trash2, Upload, Keyboard
+  BookOpen, Download, HelpCircle, Compass, Image as ImageIcon, MoreHorizontal, Rows3, Trash2, Upload, Keyboard
 } from 'lucide-react';
 import { WorkspaceSaveState } from '../../../types';
 import { useFeedback } from '../../../shared/feedback/FeedbackProvider';
 import { APP_NAME, APP_VERSION } from '../../../appMetadata';
+import {
+  getDefaultImageNodeDisplayMode,
+  setDefaultImageNodeDisplayMode,
+  type ImageNodeDisplayMode,
+} from '../utils/imageNodePreferences';
 
 interface CanvasHeaderProps {
   onLoadPreset: (presetName: string) => void;
@@ -43,6 +48,7 @@ const CanvasHeader = memo(function CanvasHeader({
   const { toast } = useFeedback();
   const [localShowMenu, setLocalShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [defaultImageMode, setDefaultImageMode] = useState<ImageNodeDisplayMode>(() => getDefaultImageNodeDisplayMode());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const helpRef = useRef<HTMLDivElement>(null);
@@ -133,6 +139,12 @@ const CanvasHeader = memo(function CanvasHeader({
     onRequestClearCanvas?.();
   };
 
+  const handleDefaultImageModeChange = (mode: ImageNodeDisplayMode) => {
+    setDefaultImageMode(mode);
+    setDefaultImageNodeDisplayMode(mode);
+    toast(mode === 'image-only' ? '新建图片节点默认使用纯图片。' : '新建图片节点默认使用图文描述。', 'success');
+  };
+
   const hasCanvasTools = !!(onAutoLayout || onAssembleDocument || onRequestClearCanvas);
 
   return (
@@ -176,32 +188,25 @@ const CanvasHeader = memo(function CanvasHeader({
             {isMenuOpen && (
               <div className="absolute right-0 top-[34px] w-56 bg-white/95 backdrop-blur-md border border-neutral-200 shadow-xl rounded-lg py-1.5 z-50 text-neutral-700 animate-in fade-in slide-in-from-top-1">
             
-              {/* Input/Output Data segment */}
-              <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
-                工作区备份管理
-              </div>
               <button
                 onClick={handleImportClick}
                 className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
               >
                 <Upload className="w-3.5 h-3.5 text-neutral-400" />
-                <span>导入工作区数据 (.json)</span>
+                <span>导入数据</span>
               </button>
               <button
                 onClick={handleExportClick}
                 className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
               >
                 <Download className="w-3.5 h-3.5 text-neutral-400" />
-                <span>导出工作区备份 (.json)</span>
+                <span>导出数据</span>
               </button>
 
               <div className="h-px bg-neutral-100 my-1.5" />
 
               {hasCanvasTools && (
                 <>
-                  <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
-                    画布工具
-                  </div>
                   {onAutoLayout && (
                     <button
                       onClick={handleAutoLayoutClick}
@@ -217,16 +222,16 @@ const CanvasHeader = memo(function CanvasHeader({
                       className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
-                      <span>还原主文档</span>
+                      <span>还原文档</span>
                     </button>
                   )}
                   {onRequestClearCanvas && (
                     <button
                       onClick={handleClearCanvasClick}
-                      className="w-full px-3 py-1.5 text-xs text-red-650 hover:bg-red-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
+                      className="w-full px-3 py-1.5 text-xs text-neutral-800 hover:bg-red-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                      <span>清空画布</span>
+                      <span className="text-red-700/90">清空画布</span>
                     </button>
                   )}
 
@@ -234,10 +239,37 @@ const CanvasHeader = memo(function CanvasHeader({
                 </>
               )}
 
-              {/* Help & System segment */}
-              <div className="px-3 py-1 text-[9px] uppercase font-bold tracking-wider text-neutral-400 select-none">
-                系统工具
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-700">
+                <ImageIcon className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                <span className="shrink-0 font-medium">新建图片默认</span>
+                <div className="ml-auto flex rounded-md border border-neutral-200 bg-neutral-50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleDefaultImageModeChange('image-only')}
+                    className={`h-6 cursor-pointer rounded px-2 text-[10px] font-bold transition-colors ${
+                      defaultImageMode === 'image-only'
+                        ? 'bg-neutral-200 text-neutral-900'
+                        : 'text-neutral-400 hover:text-neutral-700'
+                    }`}
+                  >
+                    纯图
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDefaultImageModeChange('image-card')}
+                    className={`h-6 cursor-pointer rounded px-2 text-[10px] font-bold transition-colors ${
+                      defaultImageMode === 'image-card'
+                        ? 'bg-neutral-200 text-neutral-900'
+                        : 'text-neutral-400 hover:text-neutral-700'
+                    }`}
+                  >
+                    图文
+                  </button>
+                </div>
               </div>
+
+              <div className="h-px bg-neutral-100 my-1.5" />
+
               <button
                 onClick={handleShortcutSettingsClick}
                 className="w-full px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors text-left cursor-pointer font-medium"

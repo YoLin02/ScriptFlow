@@ -474,7 +474,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   fontSize: `${state.fontSize || 12}px`,
                   lineHeight: '1.2'
                 }}
-                data-tooltip="选择并高亮该镜头对应的所有卡片连线"
+                data-tooltip="显示对应卡片连线"
               >
                 {formatSecondsToTime(tick.seconds)}
               </button>
@@ -498,7 +498,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
                   transform: 'translateX(-50%) scale(1.15)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                 }}
-                aria-label="按住此处拉去镜头对应内容卡片连线"
+                aria-label="点击时间镜头显示对应卡片连线"
               />
             </div>
           );
@@ -508,7 +508,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       {/* 2. MAIN HORIZONTAL TRACK RAIL LINE */}
       <div
         className="relative w-full h-[8px] bg-neutral-900 rounded-full mt-2.5"
-        data-tooltip="按住 Ctrl + Alt 点击轨道可新增时间点"
+        data-tooltip=" Ctrl + Alt 新增时间点"
       >
         <div
           className={`absolute inset-x-0 -top-4 -bottom-4 z-10 ${isTimelineAddMode ? 'pointer-events-auto cursor-copy' : 'pointer-events-none'}`}
@@ -522,7 +522,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           <div
             onPointerDown={handleResize}
             className="nodrag absolute -right-12 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center cursor-ew-resize bg-white rounded-full border border-neutral-300 shadow-md text-neutral-600 hover:text-neutral-950 hover:border-neutral-600 transition-colors z-20"
-            data-tooltip="左右拖拽拉伸轨道长度"
+            data-tooltip="调整轨道长度"
           >
           <span className="text-[11px] font-bold">↔</span>
         </div>

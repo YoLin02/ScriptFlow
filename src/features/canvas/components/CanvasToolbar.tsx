@@ -1,4 +1,20 @@
-import { Boxes, Film, FolderOpen, Image, Lightbulb, MoreHorizontal, Sparkles, Table, Type, Wrench } from 'lucide-react';
+import {
+  Boxes,
+  Eraser,
+  Film,
+  FolderOpen,
+  Hand,
+  Image,
+  Lightbulb,
+  Link2,
+  MessageSquare,
+  MoreHorizontal,
+  MousePointer2,
+  Pencil,
+  SquareDashedMousePointer,
+  Table,
+  Type,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AutoSaveStatus, NodeType } from '../../../types';
 import type { ShortcutMap } from '../../shortcuts';
@@ -31,51 +47,62 @@ export default function CanvasToolbar({
   onAddNode,
 }: CanvasToolbarProps) {
   return (
-    <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 cursor-default flex-col items-center gap-1.5">
+    <div className={`pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 cursor-default flex-col items-center gap-1.5 transition-transform duration-150 ${
+      isDrawerOpen ? '-translate-y-[58px]' : 'translate-y-0'
+    }`}>
       <SaveStatusText status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
 
-      <div className="pointer-events-auto flex cursor-default items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/90 px-2 py-2 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
-        <ToolbarIconButton title="文本" shortcut={shortcuts['canvas.addText']} onClick={() => onAddNode('text')}>
-          <Type className="h-4 w-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton title="图片" shortcut={shortcuts['canvas.addImage']} onClick={() => onAddNode('image')}>
-          <Image className="h-4 w-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton title="便签" shortcut={shortcuts['canvas.addIdea']} onClick={() => onAddNode('idea')}>
-          <Lightbulb className="h-4 w-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton title="表格" shortcut={shortcuts['canvas.addTable']} onClick={() => onAddNode('table')}>
-          <Table className="h-4 w-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton title="轨道" shortcut={shortcuts['canvas.addTimeline']} onClick={() => onAddNode('timeline')}>
-          <Film className="h-4 w-4" />
-        </ToolbarIconButton>
+      <div className="pointer-events-auto relative cursor-default">
+        <div className={`relative z-10 flex items-center gap-1.5 border border-neutral-200/80 bg-white/90 px-2 py-2 shadow-xl shadow-neutral-900/10 backdrop-blur-md transition-[border-radius] duration-150 ${
+          isDrawerOpen ? 'rounded-[24px]' : 'rounded-2xl'
+        }`}>
+          <ToolbarIconButton title="文本" shortcut={shortcuts['canvas.addText']} onClick={() => onAddNode('text')}>
+            <Type className="h-4 w-4" />
+          </ToolbarIconButton>
+          <ToolbarIconButton title="图片" shortcut={shortcuts['canvas.addImage']} onClick={() => onAddNode('image')}>
+            <Image className="h-4 w-4" />
+          </ToolbarIconButton>
+          <ToolbarIconButton title="便签" shortcut={shortcuts['canvas.addIdea']} onClick={() => onAddNode('idea')}>
+            <Lightbulb className="h-4 w-4" />
+          </ToolbarIconButton>
+          <ToolbarIconButton title="表格" shortcut={shortcuts['canvas.addTable']} onClick={() => onAddNode('table')}>
+            <Table className="h-4 w-4" />
+          </ToolbarIconButton>
+          <ToolbarIconButton title="轨道" shortcut={shortcuts['canvas.addTimeline']} onClick={() => onAddNode('timeline')}>
+            <Film className="h-4 w-4" />
+          </ToolbarIconButton>
 
-        <div className="mx-1 h-5 w-px bg-neutral-200" />
+          <div className="mx-1 h-5 w-px bg-neutral-200" />
 
-        <ToolbarIconButton title="配图库" shortcut={shortcuts['canvas.toggleMediaLibrary']} onClick={onToggleMediaLibrary} active={isMediaLibraryOpen}>
-          <span className="relative">
-            <FolderOpen className="h-4 w-4" />
-            {mediaAssetCount > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-neutral-900 px-1 text-[9px] font-bold leading-none text-white">
-                {mediaAssetCount}
-              </span>
-            )}
-          </span>
-        </ToolbarIconButton>
+          <ToolbarIconButton title="配图库" shortcut={shortcuts['canvas.toggleMediaLibrary']} onClick={onToggleMediaLibrary} active={isMediaLibraryOpen}>
+            <span className="relative">
+              <FolderOpen className="h-4 w-4" />
+              {mediaAssetCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-neutral-900 px-1 text-[9px] font-bold leading-none text-white">
+                  {mediaAssetCount}
+                </span>
+              )}
+            </span>
+          </ToolbarIconButton>
 
-        <ToolbarIconButton title="更多工具" shortcut={shortcuts['canvas.toggleMoreTools']} onClick={onToggleDrawer} active={isDrawerOpen}>
-          <MoreHorizontal className="h-4 w-4" />
-        </ToolbarIconButton>
-      </div>
-
-      {isDrawerOpen && (
-        <div className="pointer-events-auto flex translate-x-[46px] cursor-default items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/95 px-2 py-2 text-neutral-500 shadow-lg shadow-neutral-900/10 backdrop-blur-md animate-in fade-in slide-in-from-bottom-1 duration-150">
-          <ToolDrawerButton icon={<Boxes className="h-4 w-4" />} label="节点模板" onClick={onOpenTemplates} />
-          <ToolDrawerButton icon={<Sparkles className="h-4 w-4" />} label="智能工具" disabled />
-          <ToolDrawerButton icon={<Wrench className="h-4 w-4" />} label="更多占位" disabled />
+          <ToolbarIconButton title="更多工具" shortcut={shortcuts['canvas.toggleMoreTools']} onClick={onToggleDrawer} active={isDrawerOpen}>
+            <MoreHorizontal className="h-4 w-4" />
+          </ToolbarIconButton>
         </div>
-      )}
+
+        {isDrawerOpen && (
+          <div className="absolute left-1/2 top-[calc(100%-1px)] flex -translate-x-1/2 cursor-default items-center gap-2 rounded-b-[24px] rounded-tl-lg rounded-tr-lg border border-t-0 border-neutral-200/80 bg-white/95 px-3 pb-2.5 pt-3.5 text-neutral-500 shadow-xl shadow-neutral-900/10 backdrop-blur-md animate-in fade-in slide-in-from-top-1 duration-150">
+            <ToolDrawerButton icon={<MousePointer2 className="h-4 w-4" />} label="选择工具" disabled />
+            <ToolDrawerButton icon={<Hand className="h-4 w-4" />} label="拖动画布" disabled />
+            <ToolDrawerButton icon={<SquareDashedMousePointer className="h-4 w-4" />} label="框选工具" disabled />
+            <ToolDrawerButton icon={<Link2 className="h-4 w-4" />} label="连接工具" disabled />
+            <ToolDrawerButton icon={<Pencil className="h-4 w-4" />} label="标注工具" disabled />
+            <ToolDrawerButton icon={<MessageSquare className="h-4 w-4" />} label="批注工具" disabled />
+            <ToolDrawerButton icon={<Eraser className="h-4 w-4" />} label="清理工具" disabled />
+            <ToolDrawerButton icon={<Boxes className="h-4 w-4" />} label="节点模板" onClick={onOpenTemplates} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -95,13 +122,13 @@ function ToolDrawerButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="group relative flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-xl border border-transparent text-neutral-500 transition-colors hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:border-transparent disabled:hover:bg-transparent"
+      className="group relative flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-xl border border-transparent text-neutral-500 transition-colors hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:border-transparent disabled:hover:bg-transparent"
       aria-label={label}
     >
       {icon}
-      <span className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 -translate-x-1/2 translate-y-1 rounded-[3px] bg-neutral-950 px-2.5 py-1.5 font-sans text-[12px] font-bold leading-none text-white opacity-0 shadow-lg shadow-neutral-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+      <span className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-50 -translate-x-1/2 -translate-y-1 rounded-[3px] bg-neutral-950 px-2.5 py-1.5 font-sans text-[12px] font-bold leading-none text-white opacity-0 shadow-lg shadow-neutral-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
         <span className="whitespace-nowrap">{label}</span>
-        <span className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[6px] border-x-transparent border-t-neutral-950" />
+        <span className="absolute bottom-full left-1/2 h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-neutral-950" />
       </span>
     </button>
   );

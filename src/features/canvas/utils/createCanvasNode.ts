@@ -1,4 +1,5 @@
 import type { CanvasNodeData, NodeType, TableNodeDataValue, TimelineTrackDataValue, WorkspaceNode } from '../../../types';
+import { getDefaultImageNodeDisplayMode } from './imageNodePreferences';
 
 export function createCanvasNode(type: NodeType, position: { x: number; y: number }): WorkspaceNode {
   const id = `node-${Date.now()}`;
@@ -9,6 +10,13 @@ export function createCanvasNode(type: NodeType, position: { x: number; y: numbe
   if (type === 'image') {
     content = '';
     title = '图片节点';
+    const imageNodeDisplayMode = getDefaultImageNodeDisplayMode();
+    extraData = {
+      imageNodeDisplayMode,
+      imageDisplayMode: imageNodeDisplayMode === 'image-only' ? 'cover' : 'contain',
+      width: 280,
+      height: 180,
+    } as Partial<CanvasNodeData>;
   } else if (type === 'idea') {
     content = '';
     title = '灵感火花';

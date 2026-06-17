@@ -98,6 +98,8 @@ export interface CanvasNodeCommands {
   deleteSelectedNodes: () => void;
   updateNodesFromPanel: (nodeIds: string[], patch: Partial<CanvasNodeData>) => void;
   resizeNodesFromPanel: (nodeIds: string[], width?: number, height?: number) => void;
+  addCustomHandle: (nodeId: string, handle: NonNullable<CanvasNodeData['customHandles']>[number]) => void;
+  deleteCustomHandle: (nodeId: string, handleId: string) => void;
   onNodeDragStop: (event: unknown, node: WorkspaceNode) => void;
   autoLayout: () => void;
   alignSelectedNodes: (axis: 'left' | 'top') => void;

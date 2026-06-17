@@ -3,7 +3,12 @@ import { Check, Edit3, FileText, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
+import { useDynamicHandleClick } from './useDynamicHandleClick';
 import type { TextCanvasNodeData } from '../../../types';
+
+const DEFAULT_TEXT_NODE_WIDTH = 280;
+const TEXT_NODE_MIN_HEIGHT = 120;
+const TEXT_NODE_VERTICAL_CHROME = 106;
 
 export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
@@ -16,6 +21,25 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
   const [editorVal, setEditorVal] = useState(data.content || '');
   const [titleVal, setTitleVal] = useState(data.title || 'Untitled Card');
   const nodeRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [draftHeight, setDraftHeight] = useState<number | null>(null);
+  const handleDynamicHandleClick = useDynamicHandleClick(id);
+
+  const measureDraftHeight = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return data.height || TEXT_NODE_MIN_HEIGHT;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+    return Math.max(TEXT_NODE_MIN_HEIGHT, textarea.scrollHeight + TEXT_NODE_VERTICAL_CHROME);
+  };
+
+  const persistContent = () => {
+    const nextHeight = Math.max(draftHeight || measureDraftHeight(), data.height || TEXT_NODE_MIN_HEIGHT);
+    onUpdateContent?.(id, editorVal, titleVal, undefined, undefined, {
+      width: data.width || DEFAULT_TEXT_NODE_WIDTH,
+      height: nextHeight,
+    });
+  };
 
   // Keep state synced with outer data changes (e.g. preset loaded/reconstructed) when not actively editing
   useEffect(() => {
@@ -31,8 +55,8 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
   }, [data.title, isEditing]);
 
   const onSave = () => {
+    persistContent();
     setIsEditing(false);
-    onUpdateContent?.(id, editorVal, titleVal);
   };
 
   // Automate saving on dismiss of edit mode
@@ -40,10 +64,18 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
   useEffect(() => {
     const active = editingId === id;
     if (wasEditing.current && !active) {
-      onUpdateContent?.(id, editorVal, titleVal);
+      persistContent();
+      setDraftHeight(null);
     }
     wasEditing.current = active;
-  }, [editingId, id, editorVal, titleVal, onUpdateContent]);
+  }, [editingId, id, editorVal, titleVal, onUpdateContent, draftHeight]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    requestAnimationFrame(() => {
+      setDraftHeight(measureDraftHeight());
+    });
+  }, [editorVal, isEditing]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -76,13 +108,18 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
           : 'shadow-sm border-neutral-200/80 hover:border-neutral-300'
       }`}
       style={{
-        width: data.width ? `${data.width}px` : undefined,
-        height: data.height ? `${data.height}px` : undefined,
+        width: `${data.width || DEFAULT_TEXT_NODE_WIDTH}px`,
+        height: isEditing
+          ? `${draftHeight || data.height || TEXT_NODE_MIN_HEIGHT}px`
+          : data.height
+            ? `${data.height}px`
+            : undefined,
         backgroundColor: data.color || undefined,
       }}
+      onClickCapture={handleDynamicHandleClick}
     >
       <CardResizeControls id={id} selected={selected} minWidth={240} minHeight={120} />
-      <StandardHandles />
+      <StandardHandles nodeId={id} customHandles={data.customHandles} />
 
       {/* Node Header */}
       <div className="flex shrink-0 items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
@@ -132,13 +169,14 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
       <div className="flex min-h-0 flex-1 p-4" onDoubleClick={() => setIsEditing(true)}>
         {isEditing ? (
           <textarea
+            ref={textareaRef}
             value={editorVal}
             onChange={(e) => setEditorVal(e.target.value)}
-            className="nodrag h-full min-h-[100px] w-full resize-none text-xs font-sans text-neutral-700 bg-white border border-neutral-200 p-2 rounded focus:outline-none focus:border-neutral-400"
+            className="nodrag min-h-[100px] w-full resize-none overflow-hidden text-xs font-sans text-neutral-700 bg-white border border-neutral-200 p-2 rounded focus:outline-none focus:border-neutral-400"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <p className="h-full w-full overflow-auto text-xs font-sans text-neutral-600 leading-relaxed whitespace-pre-wrap select-text">
+          <p className="w-full overflow-visible break-words text-xs font-sans text-neutral-600 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] select-text">
             {data.content || <span className="text-neutral-400 italic">空白文本卡片... 双击进行编辑</span>}
           </p>
         )}

@@ -21,6 +21,10 @@ const IMAGE_DISPLAY_OPTIONS = [
   { value: 'cover', label: '填充' },
   { value: 'original', label: '原始' },
 ];
+const IMAGE_NODE_DISPLAY_OPTIONS = [
+  { value: 'image-only', label: '纯图片' },
+  { value: 'image-card', label: '图文描述' },
+];
 const EDGE_ROUTE_OPTIONS: Array<{ value: 'default' | 'step'; label: string; icon: ReactNode }> = [
   { value: 'default', label: '弧线', icon: <Route className="h-4 w-4" /> },
   { value: 'step', label: '折线', icon: <CornerDownRight className="h-4 w-4" /> },
@@ -49,8 +53,6 @@ export default function CanvasPropertiesPanel({
   const isSingle = selectedNodes.length === 1;
   const commonStatus = getCommonValue(selectedNodes.map((node) => node.data.status || ''));
   const commonColor = getCommonValue(selectedNodes.map((node) => node.data.color || '#ffffff')) || '#ffffff';
-  const commonWidth = getCommonValue(selectedNodes.map((node) => String(node.data.width || node.width || '')));
-  const commonHeight = getCommonValue(selectedNodes.map((node) => String(node.data.height || node.height || '')));
   const commonTags = getCommonValue(selectedNodes.map((node) => (node.data.tags || []).join(', ')));
 
   return (
@@ -66,10 +68,7 @@ export default function CanvasPropertiesPanel({
         commonTags={commonTags}
         commonStatus={commonStatus}
         commonColor={commonColor}
-        commonWidth={commonWidth}
-        commonHeight={commonHeight}
         onUpdateNodes={onUpdateNodes}
-        onResizeNodes={onResizeNodes}
       />
 
       {isSingle && firstNode.type !== 'timeline' && (
@@ -156,10 +155,7 @@ function CommonNodeFields({
   commonTags,
   commonStatus,
   commonColor,
-  commonWidth,
-  commonHeight,
   onUpdateNodes,
-  onResizeNodes,
 }: {
   isSingle: boolean;
   nodeIds: string[];
@@ -167,10 +163,7 @@ function CommonNodeFields({
   commonTags: string;
   commonStatus: string;
   commonColor: string;
-  commonWidth: string;
-  commonHeight: string;
   onUpdateNodes: (nodeIds: string[], patch: Partial<WorkspaceNode['data']>) => void;
-  onResizeNodes: (nodeIds: string[], width?: number, height?: number) => void;
 }) {
   return (
     <section className="space-y-1.5">
@@ -212,29 +205,6 @@ function CommonNodeFields({
           onSelect={(color) => onUpdateNodes(nodeIds, { color })}
         />
       </Field>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="宽度">
-          <input
-            type="number"
-            min={160}
-            value={commonWidth}
-            onChange={(event) => onResizeNodes(nodeIds, Number(event.target.value) || undefined, undefined)}
-            className="panel-input"
-            placeholder="auto"
-          />
-        </Field>
-        <Field label="高度">
-          <input
-            type="number"
-            min={80}
-            value={commonHeight}
-            onChange={(event) => onResizeNodes(nodeIds, undefined, Number(event.target.value) || undefined)}
-            className="panel-input"
-            placeholder="auto"
-          />
-        </Field>
-      </div>
     </section>
   );
 }
@@ -357,17 +327,30 @@ function ImageSpecificFields({
         </Field>
       )}
 
-      <Field label="图片说明">
-        <textarea
-          value={node.data.imageCaption || ''}
-          onChange={(event) => onUpdateNodes(nodeIds, { imageCaption: event.target.value })}
-          className="panel-input min-h-14 resize-y"
-          placeholder="图片说明 / Caption"
+      <Field label="节点样式">
+        <SegmentedControl
+          value={String(node.data.imageNodeDisplayMode || 'image-only')}
+          options={IMAGE_NODE_DISPLAY_OPTIONS}
+          onChange={(value) => onUpdateNodes(nodeIds, {
+            imageNodeDisplayMode: value as 'image-only' | 'image-card',
+            imageDisplayMode: value === 'image-only' ? 'cover' : 'contain',
+          })}
         />
       </Field>
+
+      {(node.data.imageNodeDisplayMode || 'image-only') === 'image-card' && (
+        <Field label="图片说明">
+          <textarea
+            value={node.data.imageCaption || ''}
+            onChange={(event) => onUpdateNodes(nodeIds, { imageCaption: event.target.value })}
+            className="panel-input min-h-14 resize-y"
+            placeholder="图片说明 / Caption"
+          />
+        </Field>
+      )}
       <Field label="显示模式">
         <SegmentedControl
-          value={String(node.data.imageDisplayMode || 'contain')}
+          value={String(node.data.imageDisplayMode || ((node.data.imageNodeDisplayMode || 'image-only') === 'image-only' ? 'cover' : 'contain'))}
           options={IMAGE_DISPLAY_OPTIONS}
           onChange={(value) => onUpdateNodes(nodeIds, { imageDisplayMode: value as 'contain' | 'cover' | 'original' })}
         />
