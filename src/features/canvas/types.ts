@@ -14,6 +14,7 @@ import type {
   WorkspaceSaveState,
 } from '../../types';
 import type { ShortcutMap } from '../shortcuts';
+import type { CanvasRegionTemplate } from './templates/types';
 
 export interface CanvasContextMenuState {
   x: number;
@@ -131,6 +132,18 @@ export interface CanvasMediaLibraryState {
   insertAsset: (asset: CanvasMediaAsset) => void;
   deleteAsset: (assetId: string) => void;
   downloadAll: () => void;
+}
+
+export interface CanvasTemplateState {
+  isOpen: boolean;
+  templates: CanvasRegionTemplate[];
+  canSaveSelection: boolean;
+  templateCountLabel: string;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+  saveSelectionAsTemplate: () => void;
+  insertTemplate: (templateId: string) => void;
+  renameTemplate: (templateId: string, name: string) => void;
+  deleteTemplate: (templateId: string) => void;
 }
 
 export interface CanvasAssemblyState {

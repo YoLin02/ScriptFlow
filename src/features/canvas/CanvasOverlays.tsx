@@ -7,6 +7,7 @@ import CanvasPropertiesPanel from './components/CanvasPropertiesPanel';
 import CanvasContextMenu from './components/CanvasContextMenu';
 import CanvasToolbar from './components/CanvasToolbar';
 import MediaLibraryDrawer from './components/MediaLibraryDrawer';
+import CanvasTemplatePanel from './components/CanvasTemplatePanel';
 import AssemblyPreviewModal from './components/AssemblyPreviewModal';
 import ClearCanvasConfirmModal from './components/ClearCanvasConfirmModal';
 import type { AutoSaveStatus, CanvasNodeData, WorkspaceNode, WorkspaceSaveState } from '../../types';
@@ -15,6 +16,7 @@ import type {
   CanvasAssemblyState,
   CanvasContextMenuState,
   CanvasMediaLibraryState,
+  CanvasTemplateState,
 } from './types';
 
 interface CanvasOverlaysProps {
@@ -68,9 +70,11 @@ interface CanvasOverlaysProps {
     mediaLibraryOpen: boolean;
     onToggleMediaLibrary: () => void;
     onToggleDrawer: () => void;
+    onOpenTemplates: () => void;
     onAddNode: (type: CanvasNodeData['type']) => void;
   };
   mediaLibrary: CanvasMediaLibraryState;
+  templates: CanvasTemplateState;
   assembly: CanvasAssemblyState;
   clearCanvas: {
     open: boolean;
@@ -87,6 +91,7 @@ export default function CanvasOverlays({
   contextMenu,
   toolbar,
   mediaLibrary,
+  templates,
   assembly,
   clearCanvas,
 }: CanvasOverlaysProps) {
@@ -115,13 +120,26 @@ export default function CanvasOverlays({
 
       {hints.show && <CanvasHintBubble onClose={hints.onClose} />}
 
-      <CanvasPropertiesPanel
-        selectedNodes={properties.selectedNodes}
-        selectedEdge={properties.selectedEdge}
-        onUpdateNodes={properties.onUpdateNodes}
-        onResizeNodes={properties.onResizeNodes}
-        onUpdateEdge={properties.onUpdateEdge}
-      />
+      {templates.isOpen ? (
+        <CanvasTemplatePanel
+          templates={templates.templates}
+          canSaveSelection={templates.canSaveSelection}
+          templateCountLabel={templates.templateCountLabel}
+          onSaveSelection={templates.saveSelectionAsTemplate}
+          onInsertTemplate={templates.insertTemplate}
+          onRenameTemplate={templates.renameTemplate}
+          onDeleteTemplate={templates.deleteTemplate}
+          onClose={() => templates.setOpen(false)}
+        />
+      ) : (
+        <CanvasPropertiesPanel
+          selectedNodes={properties.selectedNodes}
+          selectedEdge={properties.selectedEdge}
+          onUpdateNodes={properties.onUpdateNodes}
+          onResizeNodes={properties.onResizeNodes}
+          onUpdateEdge={properties.onUpdateEdge}
+        />
+      )}
 
       {contextMenu.state && (
         <CanvasContextMenu
@@ -150,6 +168,7 @@ export default function CanvasOverlays({
         shortcuts={toolbar.shortcuts}
         onToggleMediaLibrary={toolbar.onToggleMediaLibrary}
         onToggleDrawer={toolbar.onToggleDrawer}
+        onOpenTemplates={toolbar.onOpenTemplates}
         onAddNode={toolbar.onAddNode}
       />
 

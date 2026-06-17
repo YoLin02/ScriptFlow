@@ -1,6 +1,7 @@
 import React, { memo, useContext, useEffect, useState } from 'react';
 import { Plus, Table, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
+import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
 import type { TableCanvasNodeData, TableCellSelection, TableNodeDataValue, TableTextAlign } from '../../../types';
 
@@ -147,21 +148,22 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
 
   return (
     <div
-      className={`relative min-w-[320px] max-w-[420px] bg-white rounded-lg border text-left transition-all ${
+      className={`relative flex min-w-[320px] flex-col bg-white rounded-lg border text-left transition-all ${
         selected
           ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800'
           : 'shadow-sm border-neutral-200/85 hover:border-neutral-300'
       }`}
       style={{
         width: data.width ? `${data.width}px` : undefined,
-        minHeight: data.height ? `${data.height}px` : undefined,
+        height: data.height ? `${data.height}px` : undefined,
         backgroundColor: data.color || undefined,
       }}
     >
+      <CardResizeControls id={id} selected={selected} minWidth={300} minHeight={160} />
       <StandardHandles />
 
       {/* Node Header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
+      <div className="flex shrink-0 items-center justify-between px-3 py-2 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
         <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2">
           <Table className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
           <input
@@ -186,8 +188,8 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
       </div>
 
       {/* Node Content Body */}
-      <div className="p-3">
-        <div className="overflow-x-auto max-w-full rounded border border-neutral-150">
+      <div className="flex min-h-0 flex-1 flex-col p-3">
+        <div className="min-h-0 flex-1 overflow-auto max-w-full rounded border border-neutral-150">
           <table className="w-full text-xs text-left border-collapse">
             <thead>
               <tr className="bg-neutral-50/60 border-b border-neutral-200">
@@ -253,7 +255,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
         </div>
 
         {/* Column and row controls */}
-        <div className="flex items-center gap-1.5 mt-2">
+        <div className="flex shrink-0 items-center gap-1.5 mt-2">
           <button
             onClick={addRow}
             className="flex items-center gap-1 text-[10px] font-semibold bg-neutral-50 hover:bg-neutral-100/90 border border-neutral-200 text-neutral-600 px-2.5 py-1 rounded shadow-xs transition-all cursor-pointer"
@@ -272,7 +274,7 @@ export const TableNode = memo(({ id, data, selected }: { id: string; data: Table
       </div>
 
       {/* Node Footer */}
-      <div className="px-3 py-1 bg-neutral-50/10 border-t border-neutral-50 text-[10px] text-neutral-400 flex justify-between items-center select-none rounded-b-lg">
+      <div className="flex shrink-0 justify-between items-center px-3 py-1 bg-neutral-50/10 border-t border-neutral-50 text-[10px] text-neutral-400 select-none rounded-b-lg">
         <span>{data.status || '结构表格'}</span>
         <span>ID: {id.slice(0, 6)}</span>
       </div>

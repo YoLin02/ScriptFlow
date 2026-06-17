@@ -1,6 +1,7 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, Image as ImageIcon, Plus, Trash2, Upload } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
+import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
 import type { ImageCanvasNodeData } from '../../../types';
 
@@ -20,11 +21,6 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const imageDisplayMode = data.imageDisplayMode || 'contain';
-  const imageClassName = imageDisplayMode === 'cover'
-    ? 'h-[180px] w-full object-cover'
-    : imageDisplayMode === 'original'
-      ? 'max-w-none max-h-none'
-      : 'max-w-full max-h-[180px] object-contain';
 
   // Sync state with outer modifications
   useEffect(() => {
@@ -105,21 +101,22 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
   return (
     <div 
       ref={nodeRef}
-      className={`relative w-[280px] bg-white rounded-lg border text-left transition-all ${
+      className={`relative flex w-[280px] flex-col bg-white rounded-lg border text-left transition-all ${
         selected 
           ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800' 
           : 'shadow-sm border-neutral-200/80 hover:border-neutral-300'
       }`}
       style={{
         width: data.width ? `${data.width}px` : undefined,
-        minHeight: data.height ? `${data.height}px` : undefined,
+        height: data.height ? `${data.height}px` : undefined,
         backgroundColor: data.color || undefined,
       }}
     >
+      <CardResizeControls id={id} selected={selected} minWidth={240} minHeight={150} />
       <StandardHandles />
 
       {/* Node Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
+      <div className="flex shrink-0 items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
         <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2">
           <ImageIcon className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
           {isEditing ? (
@@ -163,15 +160,19 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
       </div>
 
       {/* Image Content Container */}
-      <div className="p-3" onDoubleClick={() => setIsEditing(true)}>
+      <div className="flex min-h-0 flex-1 p-3" onDoubleClick={() => setIsEditing(true)}>
         {imageUrl ? (
-          <div className="space-y-2">
-            <div className="relative group overflow-hidden rounded border border-neutral-100 max-h-[180px] bg-neutral-50 flex items-center justify-center">
+          <div className="flex min-h-0 w-full flex-col gap-2">
+            <div className="relative group flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-neutral-100 bg-neutral-50">
               <img 
                 src={imageUrl} 
                 alt="Uploaded resource" 
                 referrerPolicy="no-referrer"
-                className={imageClassName}
+                className={imageDisplayMode === 'cover'
+                  ? 'h-full w-full object-cover'
+                  : imageDisplayMode === 'original'
+                    ? 'max-h-full max-w-full object-contain'
+                    : 'max-h-full max-w-full object-contain'}
               />
               <button
                 onClick={() => { setImageUrl(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
@@ -185,11 +186,11 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
               value={caption}
               placeholder="添加图片批注或说明..."
               onChange={(e) => handleCaptionChange(e.target.value)}
-              className="w-full text-xs text-neutral-500 bg-neutral-50 hover:bg-neutral-100/50 focus:bg-white border border-transparent focus:border-neutral-200 px-2 py-1 rounded focus:outline-none"
+              className="shrink-0 w-full text-xs text-neutral-500 bg-neutral-50 hover:bg-neutral-100/50 focus:bg-white border border-transparent focus:border-neutral-200 px-2 py-1 rounded focus:outline-none"
             />
           </div>
         ) : (
-          <div className="border border-dashed border-neutral-200 hover:border-neutral-300 rounded p-4 flex flex-col items-center justify-center bg-neutral-50/50 transition-colors">
+          <div className="flex min-h-[120px] w-full flex-col items-center justify-center rounded border border-dashed border-neutral-200 bg-neutral-50/50 p-4 transition-colors hover:border-neutral-300">
             {isUrlInput ? (
               <form onSubmit={handleUrlSubmit} className="w-full space-y-2 text-center">
                 <input
@@ -251,7 +252,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
       </div>
 
       {/* Node Footer */}
-      <div className="px-3.5 py-1.5 bg-neutral-50/20 border-t border-neutral-50 text-[10px] text-neutral-400 flex justify-between items-center select-none rounded-b-lg">
+      <div className="flex shrink-0 justify-between items-center px-3.5 py-1.5 bg-neutral-50/20 border-t border-neutral-50 text-[10px] text-neutral-400 select-none rounded-b-lg">
         <span>{data.status || '画布插图'}</span>
         <span>ID: {id.slice(0, 6)}</span>
       </div>

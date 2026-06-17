@@ -1,6 +1,7 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Check, Edit3, FileText, Trash2 } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
+import CardResizeControls from './CardResizeControls';
 import StandardHandles from './StandardHandles';
 import type { TextCanvasNodeData } from '../../../types';
 
@@ -69,21 +70,22 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
   return (
     <div 
       ref={nodeRef}
-      className={`relative min-w-[280px] max-w-[340px] bg-white rounded-lg border text-left transition-all ${
+      className={`relative flex min-w-[280px] flex-col bg-white rounded-lg border text-left transition-all ${
         selected 
           ? 'shadow-lg border-neutral-800 ring-1 ring-neutral-800' 
           : 'shadow-sm border-neutral-200/80 hover:border-neutral-300'
       }`}
       style={{
         width: data.width ? `${data.width}px` : undefined,
-        minHeight: data.height ? `${data.height}px` : undefined,
+        height: data.height ? `${data.height}px` : undefined,
         backgroundColor: data.color || undefined,
       }}
     >
+      <CardResizeControls id={id} selected={selected} minWidth={240} minHeight={120} />
       <StandardHandles />
 
       {/* Node Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
+      <div className="flex shrink-0 items-center justify-between px-3.5 py-2.5 bg-neutral-50/50 border-b border-neutral-100 rounded-t-lg">
         <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2">
           <FileText className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
           {isEditing ? (
@@ -127,23 +129,23 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
       </div>
 
       {/* Node Content Body */}
-      <div className="p-4" onDoubleClick={() => setIsEditing(true)}>
+      <div className="flex min-h-0 flex-1 p-4" onDoubleClick={() => setIsEditing(true)}>
         {isEditing ? (
           <textarea
             value={editorVal}
             onChange={(e) => setEditorVal(e.target.value)}
-            className="nodrag w-full min-h-[100px] text-xs font-sans text-neutral-700 bg-white border border-neutral-200 p-2 rounded focus:outline-none focus:border-neutral-400 resize-y"
+            className="nodrag h-full min-h-[100px] w-full resize-none text-xs font-sans text-neutral-700 bg-white border border-neutral-200 p-2 rounded focus:outline-none focus:border-neutral-400"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <p className="text-xs font-sans text-neutral-600 leading-relaxed whitespace-pre-wrap select-text">
+          <p className="h-full w-full overflow-auto text-xs font-sans text-neutral-600 leading-relaxed whitespace-pre-wrap select-text">
             {data.content || <span className="text-neutral-400 italic">空白文本卡片... 双击进行编辑</span>}
           </p>
         )}
       </div>
 
       {/* Node Footer Meta */}
-      <div className="px-3.5 py-1.5 bg-neutral-50/20 border-t border-neutral-50 text-[10px] text-neutral-400 flex justify-between items-center select-none rounded-b-lg">
+      <div className="flex shrink-0 justify-between items-center px-3.5 py-1.5 bg-neutral-50/20 border-t border-neutral-50 text-[10px] text-neutral-400 select-none rounded-b-lg">
           <span>{data.status || '文本切片'}</span>
         <span>ID: {id.slice(0, 6)}</span>
       </div>

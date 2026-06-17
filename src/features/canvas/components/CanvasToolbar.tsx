@@ -1,4 +1,4 @@
-import { Film, FolderOpen, Image, Lightbulb, MoreHorizontal, Table, Type } from 'lucide-react';
+import { Boxes, Film, FolderOpen, Image, Lightbulb, MoreHorizontal, Sparkles, Table, Type, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AutoSaveStatus, NodeType } from '../../../types';
 import type { ShortcutMap } from '../../shortcuts';
@@ -13,6 +13,7 @@ interface CanvasToolbarProps {
   shortcuts: ShortcutMap;
   onToggleMediaLibrary: () => void;
   onToggleDrawer: () => void;
+  onOpenTemplates: () => void;
   onAddNode: (type: NodeType) => void;
 }
 
@@ -26,13 +27,14 @@ export default function CanvasToolbar({
   shortcuts,
   onToggleMediaLibrary,
   onToggleDrawer,
+  onOpenTemplates,
   onAddNode,
 }: CanvasToolbarProps) {
   return (
-    <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 cursor-default flex-col items-center gap-2">
+    <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 cursor-default flex-col items-center gap-1.5">
       <SaveStatusText status={saveStatus} lastSavedAt={lastSavedAt} error={saveError} />
 
-      <div className="pointer-events-auto flex cursor-default items-center gap-2 rounded-2xl border border-neutral-200/80 bg-white/90 px-2.5 py-2.5 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
+      <div className="pointer-events-auto flex cursor-default items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/90 px-2 py-2 shadow-xl shadow-neutral-900/10 backdrop-blur-md">
         <ToolbarIconButton title="文本" shortcut={shortcuts['canvas.addText']} onClick={() => onAddNode('text')}>
           <Type className="h-4 w-4" />
         </ToolbarIconButton>
@@ -68,11 +70,40 @@ export default function CanvasToolbar({
       </div>
 
       {isDrawerOpen && (
-        <div className="pointer-events-auto cursor-default rounded-xl border border-neutral-200/80 bg-white/95 px-3 py-2 text-[11px] text-neutral-400 shadow-lg shadow-neutral-900/10 backdrop-blur-md">
-          更多工具暂未配置
+        <div className="pointer-events-auto flex translate-x-[46px] cursor-default items-center gap-1.5 rounded-2xl border border-neutral-200/80 bg-white/95 px-2 py-2 text-neutral-500 shadow-lg shadow-neutral-900/10 backdrop-blur-md animate-in fade-in slide-in-from-bottom-1 duration-150">
+          <ToolDrawerButton icon={<Boxes className="h-4 w-4" />} label="节点模板" onClick={onOpenTemplates} />
+          <ToolDrawerButton icon={<Sparkles className="h-4 w-4" />} label="智能工具" disabled />
+          <ToolDrawerButton icon={<Wrench className="h-4 w-4" />} label="更多占位" disabled />
         </div>
       )}
     </div>
+  );
+}
+
+function ToolDrawerButton({
+  icon,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="group relative flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-xl border border-transparent text-neutral-500 transition-colors hover:border-neutral-200 hover:bg-neutral-100 hover:text-neutral-950 disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:border-transparent disabled:hover:bg-transparent"
+      aria-label={label}
+    >
+      {icon}
+      <span className="pointer-events-none absolute bottom-[calc(100%+10px)] left-1/2 z-50 -translate-x-1/2 translate-y-1 rounded-[3px] bg-neutral-950 px-2.5 py-1.5 font-sans text-[12px] font-bold leading-none text-white opacity-0 shadow-lg shadow-neutral-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+        <span className="whitespace-nowrap">{label}</span>
+        <span className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[6px] border-x-transparent border-t-neutral-950" />
+      </span>
+    </button>
   );
 }
 
@@ -97,7 +128,7 @@ function ToolbarIconButton({
     <span className="group relative inline-flex">
       <button
         onClick={onClick}
-        className={`flex h-[42px] w-[42px] cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 ${
+        className={`flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-xl border transition-all duration-150 ${
           active
             ? 'border-neutral-200 bg-neutral-200 text-neutral-950 shadow-sm'
             : danger

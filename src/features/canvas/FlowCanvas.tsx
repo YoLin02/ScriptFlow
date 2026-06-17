@@ -14,6 +14,7 @@ import { useCanvasNodeCommands } from './hooks/useCanvasNodeCommands';
 import { useCanvasPointerPan } from './hooks/useCanvasPointerPan';
 import { useCanvasPresentation } from './hooks/useCanvasPresentation';
 import { useCanvasShortcuts } from './hooks/useCanvasShortcuts';
+import { useCanvasTemplates } from './hooks/useCanvasTemplates';
 import type { FlowCanvasProps, ViewportHandlers, ViewportShellHandlers } from './types';
 
 export default function FlowCanvas({
@@ -46,6 +47,7 @@ export default function FlowCanvas({
   const [showHints, setShowHints] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
+  const [isTemplatePanelOpen, setIsTemplatePanelOpen] = useState(false);
 
   const pointerPan = useCanvasPointerPan();
   const edgeCommands = useCanvasEdgeCommands({ setEdges });
@@ -121,6 +123,14 @@ export default function FlowCanvas({
     onAfterAction: closeTransientUi,
   });
 
+  const templates = useCanvasTemplates({
+    edges,
+    selectedNodes: presentation.selectedNodes,
+    setNodes,
+    setEdges,
+    getCenteredNodePosition,
+  });
+
   useCanvasShortcuts({
     shortcuts,
     setNodes,
@@ -133,6 +143,7 @@ export default function FlowCanvas({
       setIsMenuOpen((open) => !open);
       setIsDrawerOpen(false);
       mediaLibrary.setOpen(false);
+      setIsTemplatePanelOpen(false);
     },
     onUndo,
     onRedo,
@@ -145,9 +156,14 @@ export default function FlowCanvas({
       mediaLibrary.setOpen((open) => !open);
       setIsDrawerOpen(false);
       setIsMenuOpen(false);
+      setIsTemplatePanelOpen(false);
     },
     onToggleMoreTools: () => {
-      setIsDrawerOpen((open) => !open);
+      setIsDrawerOpen((open) => {
+        const nextOpen = !open;
+        if (nextOpen) setIsTemplatePanelOpen(false);
+        return nextOpen;
+      });
       mediaLibrary.setOpen(false);
       setIsMenuOpen(false);
     },
@@ -313,6 +329,7 @@ export default function FlowCanvas({
               if (open) {
                 setIsDrawerOpen(false);
                 mediaLibrary.setOpen(false);
+                setIsTemplatePanelOpen(false);
               }
             },
             onAutoLayout: nodeCommands.autoLayout,
@@ -357,6 +374,7 @@ export default function FlowCanvas({
               mediaLibrary.setOpen(nextState);
               setIsDrawerOpen(false);
               setIsMenuOpen(false);
+              setIsTemplatePanelOpen(false);
             },
             onToggleDrawer: () => {
               const nextState = !isDrawerOpen;
@@ -364,11 +382,30 @@ export default function FlowCanvas({
               if (nextState) {
                 setIsMenuOpen(false);
                 mediaLibrary.setOpen(false);
+                setIsTemplatePanelOpen(false);
               }
+            },
+            onOpenTemplates: () => {
+              setIsTemplatePanelOpen(true);
+              setIsDrawerOpen(false);
+              setIsMenuOpen(false);
+              mediaLibrary.setOpen(false);
+              edgeCommands.setSelectedEdge(null);
             },
             onAddNode: nodeCommands.addNode,
           }}
           mediaLibrary={mediaLibrary}
+          templates={{
+            isOpen: isTemplatePanelOpen,
+            setOpen: setIsTemplatePanelOpen,
+            templates: templates.templates,
+            canSaveSelection: templates.canSaveSelection,
+            templateCountLabel: templates.templateCountLabel,
+            saveSelectionAsTemplate: templates.saveSelectionAsTemplate,
+            insertTemplate: templates.insertTemplate,
+            renameTemplate: templates.renameTemplate,
+            deleteTemplate: templates.deleteTemplate,
+          }}
           assembly={assembly}
           clearCanvas={{
             open: showClearConfirmModal,

@@ -63,7 +63,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
               item.tone === 'error'
                 ? 'border-red-100 text-red-700'
                 : item.tone === 'success'
-                  ? 'border-green-100 text-green-700'
+                  ? 'border-neutral-200 text-neutral-800 shadow-neutral-900/10 before:mr-2 before:inline-block before:h-1.5 before:w-1.5 before:rounded-full before:bg-neutral-900'
                   : 'border-neutral-200 text-neutral-700'
             }`}
           >
