@@ -14,6 +14,8 @@ export function createCanvasNode(type: NodeType, position: { x: number; y: numbe
     extraData = {
       imageNodeDisplayMode,
       imageDisplayMode: imageNodeDisplayMode === 'image-only' ? 'cover' : 'contain',
+      imageUrl: '',
+      imageCaption: '',
       width: 280,
       height: 180,
     } as Partial<CanvasNodeData>;

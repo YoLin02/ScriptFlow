@@ -30,46 +30,28 @@ const StandardHandles = memo(({ nodeId, customHandles = [] }: { nodeId: string; 
 
   return (
     <>
-      <Handle type="target" position={Position.Top} id="t-tgt" className="!bg-neutral-400" />
-      <Handle type="source" position={Position.Top} id="t-src" className="!bg-neutral-400" style={{ opacity: 0, zIndex: 10 }} />
-      <Handle type="target" position={Position.Right} id="r-tgt" className="!bg-neutral-400" style={{ opacity: 0, zIndex: 10 }} />
-      <Handle type="source" position={Position.Right} id="r-src" className="!bg-neutral-400" />
-      <Handle type="target" position={Position.Bottom} id="b-tgt" className="!bg-neutral-400" />
-      <Handle type="source" position={Position.Bottom} id="b-src" className="!bg-neutral-400" style={{ opacity: 0, zIndex: 10 }} />
-      <Handle type="target" position={Position.Left} id="l-tgt" className="!bg-neutral-400" style={{ opacity: 0, zIndex: 10 }} />
-      <Handle type="source" position={Position.Left} id="l-src" className="!bg-neutral-400" />
+      <Handle type="source" position={Position.Top} id="t" className="!bg-neutral-400" />
+      <Handle type="source" position={Position.Right} id="r" className="!bg-neutral-400" />
+      <Handle type="source" position={Position.Bottom} id="b" className="!bg-neutral-400" />
+      <Handle type="source" position={Position.Left} id="l" className="!bg-neutral-400" />
       {customHandles.map((handle) => {
         const position = POSITION_BY_SIDE[handle.side];
         const style = getCustomHandleStyle(handle);
         return (
-          <span key={handle.id}>
-            <Handle
-              type="target"
-              position={position}
-              id={`${handle.id}-tgt`}
-              className="custom-node-handle custom-node-handle-target !bg-neutral-500"
-              style={{ ...style, opacity: 0, zIndex: 14 }}
-              onClick={(event) => {
-                if (!event.altKey) return;
-                event.preventDefault();
-                event.stopPropagation();
-                onDeleteCustomHandle?.(nodeId, handle.id);
-              }}
-            />
-            <Handle
-              type="source"
-              position={position}
-              id={`${handle.id}-src`}
-              className="custom-node-handle custom-node-handle-source !bg-neutral-500"
-              style={{ ...style, zIndex: 15 }}
-              onClick={(event) => {
-                if (!event.altKey) return;
-                event.preventDefault();
-                event.stopPropagation();
-                onDeleteCustomHandle?.(nodeId, handle.id);
-              }}
-            />
-          </span>
+          <Handle
+            key={handle.id}
+            type="source"
+            position={position}
+            id={handle.id}
+            className="custom-node-handle custom-node-handle-source !bg-neutral-500"
+            style={{ ...style, zIndex: 15 }}
+            onClick={(event) => {
+              if (!event.altKey) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onDeleteCustomHandle?.(nodeId, handle.id);
+            }}
+          />
         );
       })}
     </>

@@ -15,6 +15,7 @@ import { useCanvasPointerPan } from './hooks/useCanvasPointerPan';
 import { useCanvasPresentation } from './hooks/useCanvasPresentation';
 import { useCanvasShortcuts } from './hooks/useCanvasShortcuts';
 import { useCanvasTemplates } from './hooks/useCanvasTemplates';
+import { createImageNodeFromAsset, createMediaAsset } from './utils/mediaAssetUtils';
 import type { FlowCanvasProps, ViewportHandlers, ViewportShellHandlers } from './types';
 
 export default function FlowCanvas({
@@ -128,6 +129,25 @@ export default function FlowCanvas({
     setEdges,
     getCenteredNodePosition,
   });
+
+  const addImageFilesToCanvas = useCallback((files: File[], clientX: number, clientY: number) => {
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    imageFiles.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const asset = createMediaAsset(file.name, String(reader.result || ''));
+        const basePosition = screenToFlowPosition({
+          x: clientX + index * 24,
+          y: clientY + index * 24,
+        });
+        const newNode = createImageNodeFromAsset(asset, basePosition);
+        setNodes((currentNodes) => [...currentNodes, newNode]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [screenToFlowPosition, setNodes]);
 
   useCanvasShortcuts({
     shortcuts,
@@ -263,6 +283,19 @@ export default function FlowCanvas({
     onPointerUp: pointerPan.endPointerPan,
     onPointerLeave: pointerPan.endPointerPan,
     onPointerCancel: pointerPan.resetPointerPan,
+    onDragOver: (event) => {
+      const hasImage = Array.from(event.dataTransfer.items || []).some((item) => item.kind === 'file' && item.type.startsWith('image/'));
+      if (!hasImage) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    },
+    onDrop: (event) => {
+      const files = Array.from(event.dataTransfer.files || []).filter((file) => file.type.startsWith('image/'));
+      if (files.length === 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      addImageFilesToCanvas(files, event.clientX, event.clientY);
+    },
   };
 
   const viewportShellHandlers: ViewportShellHandlers = {

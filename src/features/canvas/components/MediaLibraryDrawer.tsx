@@ -61,7 +61,7 @@ export default function MediaLibraryDrawer({
         >
           <Upload className="w-6 h-6 text-neutral-400 group-hover:text-neutral-700 transition-colors mb-2" />
           <span className="text-[11px] font-semibold text-neutral-700">拖拽上传 / 批量选择</span>
-          <span className="text-[9px] text-neutral-400 mt-0.5">支持批量上传到文件夹，自动插到画布</span>
+          <span className="text-[9px] text-neutral-400 mt-0.5">支持批量上传到文件夹，点击图片后插入画布</span>
           <input
             ref={fileInputRef}
             type="file"

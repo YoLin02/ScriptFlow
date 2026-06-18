@@ -1,6 +1,7 @@
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   MiniMap,
   PanOnScrollMode,
   ReactFlow,
@@ -59,6 +60,7 @@ export default function CanvasViewport({
       onEdgesChange={onEdgesChange}
       onConnect={viewportHandlers.onConnect}
       nodeTypes={nodeTypes}
+      connectionMode={ConnectionMode.Loose}
       onNodeDragStop={viewportHandlers.onNodeDragStop}
       onNodeClick={viewportHandlers.onNodeClick}
       onEdgeClick={viewportHandlers.onEdgeClick}
@@ -80,6 +82,8 @@ export default function CanvasViewport({
       onPointerUp={viewportHandlers.onPointerUp}
       onPointerLeave={viewportHandlers.onPointerLeave}
       onPointerCancel={viewportHandlers.onPointerCancel}
+      onDragOver={viewportHandlers.onDragOver}
+      onDrop={viewportHandlers.onDrop}
     >
       <Background
         variant={BackgroundVariant.Dots}

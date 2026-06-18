@@ -29,7 +29,7 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
     : imageDisplayMode === 'original'
       ? 'max-h-full max-w-full object-contain'
       : 'max-h-full max-w-full object-contain';
-  const isPureImageMode = imageNodeDisplayMode === 'image-only' && !!imageUrl;
+  const isPureImageMode = imageNodeDisplayMode === 'image-only';
 
   // Sync state with outer modifications
   useEffect(() => {
@@ -45,20 +45,41 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
     onUpdateContent?.(id, data.content, titleVal, imageUrl, caption);
   };
 
+  const applyImageFile = (file: File) => {
+    const nameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setImageUrl(base64String);
+      setTitleVal(nameWithoutExtension);
+      setCaption(nameWithoutExtension);
+      onUpdateContent?.(id, data.content, nameWithoutExtension, base64String, nameWithoutExtension);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const nameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImageUrl(base64String);
-        setTitleVal(nameWithoutExtension);
-        setCaption(nameWithoutExtension);
-        onUpdateContent?.(id, data.content, nameWithoutExtension, base64String, nameWithoutExtension);
-      };
-      reader.readAsDataURL(file);
+      applyImageFile(file);
     }
+    e.target.value = '';
+  };
+
+  const handleImageDragOver = (e: React.DragEvent) => {
+    const hasImage = Array.from(e.dataTransfer.items || []).some((item) => item.kind === 'file' && item.type.startsWith('image/'));
+    if (!hasImage) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleImageDrop = (e: React.DragEvent) => {
+    const file = Array.from(e.dataTransfer.files || []).find((item) => item.type.startsWith('image/'));
+    if (!file) return;
+    e.preventDefault();
+    e.stopPropagation();
+    applyImageFile(file);
   };
 
   const handleUrlSubmit = (e: React.FormEvent) => {
@@ -118,37 +139,58 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
         }}
         onDoubleClick={() => setIsEditing(true)}
         onClickCapture={handleDynamicHandleClick}
+        onDragOver={handleImageDragOver}
+        onDrop={handleImageDrop}
       >
         <CardResizeControls id={id} selected={selected} minWidth={160} minHeight={110} />
         <StandardHandles nodeId={id} customHandles={data.customHandles} />
 
-        <div className="h-full w-full overflow-hidden rounded-[inherit]">
-          <img
-            src={imageUrl}
-            alt={caption || titleVal || '图片节点'}
-            referrerPolicy="no-referrer"
-            className={imageClassName}
-          />
-        </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+
+        {imageUrl ? (
+          <div className="h-full w-full overflow-hidden rounded-[inherit]">
+            <img
+              src={imageUrl}
+              alt={caption || titleVal || '图片节点'}
+              referrerPolicy="no-referrer"
+              className={imageClassName}
+            />
+          </div>
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-[inherit] border border-dashed border-neutral-200 bg-neutral-50/60 p-4 text-center">
+            <ImageIcon className="mb-2 h-7 w-7 text-neutral-400 stroke-[1.5]" />
+            <span className="text-[11px] font-semibold text-neutral-500">拖放或上传图片</span>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-3 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 text-[10px] font-semibold text-neutral-600 shadow-xs transition-colors hover:bg-neutral-50"
+            >
+              <Upload className="h-3 w-3" />
+              本地上传
+            </button>
+          </div>
+        )}
 
         <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button
-            onClick={() => {
-              setImageUrl('');
-              if (fileInputRef.current) fileInputRef.current.value = '';
-              onUpdateContent?.(id, data.content, titleVal, '', caption);
-            }}
+            onClick={() => fileInputRef.current?.click()}
             className="rounded-md bg-white/90 px-2 py-1 text-[10px] font-semibold text-neutral-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
             data-tooltip="更换图片"
-            data-tooltip-placement="bottom"
+            data-tooltip-placement="top"
           >
-            更换
+            换图
           </button>
           <button
             onClick={onDelete}
             className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-white/90 text-neutral-400 shadow-sm backdrop-blur-sm transition-colors hover:bg-red-50 hover:text-red-600"
             data-tooltip="删除图片节点"
-            data-tooltip-placement="bottom"
+            data-tooltip-placement="top"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -239,7 +281,11 @@ export const ImageNode = memo(({ id, data, selected }: { id: string; data: Image
             </div>
           </div>
         ) : (
-          <div className="flex min-h-[120px] w-full flex-col items-center justify-center rounded border border-dashed border-neutral-200 bg-neutral-50/50 p-4 transition-colors hover:border-neutral-300">
+          <div
+            className="flex min-h-[120px] w-full flex-col items-center justify-center rounded border border-dashed border-neutral-200 bg-neutral-50/50 p-4 transition-colors hover:border-neutral-300"
+            onDragOver={handleImageDragOver}
+            onDrop={handleImageDrop}
+          >
             {isUrlInput ? (
               <form onSubmit={handleUrlSubmit} className="w-full space-y-2 text-center">
                 <input

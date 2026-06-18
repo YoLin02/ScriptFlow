@@ -36,9 +36,18 @@ export function getConnectedNodeIds(
     const queue: string[] = [];
 
     edges.forEach((edge) => {
-      if (edge.source === activeTickDetails.nodeId && edge.sourceHandle === activeTickDetails.tickId) {
+      const startsFromActiveTick =
+        edge.source === activeTickDetails.nodeId && edge.sourceHandle === activeTickDetails.tickId;
+      const endsAtActiveTick =
+        edge.target === activeTickDetails.nodeId && edge.targetHandle === activeTickDetails.tickId;
+
+      if (startsFromActiveTick) {
         visited.add(edge.target);
         queue.push(edge.target);
+      }
+      if (endsAtActiveTick) {
+        visited.add(edge.source);
+        queue.push(edge.source);
       }
     });
 

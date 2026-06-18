@@ -1,6 +1,7 @@
 import type { Connection, Edge, EdgeChange, NodeChange, OnEdgesChange, OnNodesChange } from '@xyflow/react';
 import type {
   Dispatch,
+  DragEvent as ReactDragEvent,
   MouseEvent as ReactMouseEvent,
   MutableRefObject,
   PointerEvent as ReactPointerEvent,
@@ -71,6 +72,8 @@ export interface ViewportHandlers {
   onPointerUp: () => void;
   onPointerLeave: () => void;
   onPointerCancel: () => void;
+  onDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
 }
 
 export interface ViewportShellHandlers {
