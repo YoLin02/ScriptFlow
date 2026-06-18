@@ -9,6 +9,8 @@ import type { IdeaCanvasNodeData } from '../../../types';
 const DEFAULT_IDEA_NODE_WIDTH = 260;
 const IDEA_NODE_MIN_HEIGHT = 100;
 const IDEA_NODE_VERTICAL_CHROME = 68;
+const IDEA_NODE_BODY_HORIZONTAL_PADDING = 24;
+const IDEA_NODE_DISPLAY_VERTICAL_CHROME = 82;
 
 export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
@@ -32,8 +34,39 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCa
     return Math.max(IDEA_NODE_MIN_HEIGHT, textarea.scrollHeight + IDEA_NODE_VERTICAL_CHROME);
   };
 
+  const measureDisplayHeight = (text: string) => {
+    if (typeof document === 'undefined') return measureDraftHeight();
+    const nodeWidth = nodeRef.current?.getBoundingClientRect().width || data.width || DEFAULT_IDEA_NODE_WIDTH;
+    const measureEl = document.createElement('div');
+    measureEl.textContent = text || '空白灵感卡... 双击进行编辑';
+    Object.assign(measureEl.style, {
+      position: 'fixed',
+      left: '-9999px',
+      top: '0',
+      width: `${Math.max(80, nodeWidth - IDEA_NODE_BODY_HORIZONTAL_PADDING - 20)}px`,
+      visibility: 'hidden',
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      fontStyle: 'italic',
+      lineHeight: 'normal',
+      padding: '10px',
+      border: '1px solid transparent',
+    });
+    document.body.appendChild(measureEl);
+    const measuredHeight = measureEl.scrollHeight;
+    measureEl.remove();
+    return Math.max(IDEA_NODE_MIN_HEIGHT, measuredHeight + IDEA_NODE_DISPLAY_VERTICAL_CHROME);
+  };
+
   const persistContent = () => {
-    const nextHeight = Math.max(draftHeight || measureDraftHeight(), data.height || IDEA_NODE_MIN_HEIGHT);
+    const nextHeight = Math.max(
+      draftHeight || measureDraftHeight(),
+      measureDisplayHeight(editorVal),
+      data.height || IDEA_NODE_MIN_HEIGHT,
+    );
     onUpdateContent?.(id, editorVal, undefined, undefined, undefined, {
       width: data.width || DEFAULT_IDEA_NODE_WIDTH,
       height: nextHeight,
@@ -162,7 +195,7 @@ export const IdeaNode = memo(({ id, data, selected }: { id: string; data: IdeaCa
             placeholder="写下你的灵感火花..."
           />
         ) : (
-          <p className="w-full overflow-visible break-words text-xs font-sans text-neutral-600 italic bg-white/40 p-2.5 rounded border border-neutral-100 [overflow-wrap:anywhere]">
+          <p className="h-full min-h-0 w-full overflow-y-auto break-words rounded border border-neutral-100 bg-white/40 p-2.5 font-sans text-xs italic text-neutral-600 [overflow-wrap:anywhere]">
             {data.content || <span className="text-neutral-400 italic">空白灵感卡... 双击进行编辑</span>}
           </p>
         )}

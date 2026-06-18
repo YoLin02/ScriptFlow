@@ -17,6 +17,23 @@ interface UseCanvasNodeCommandsOptions {
   onAfterSelectionMutation?: () => void;
 }
 
+function isLegacyCustomHandleMatch(edgeHandleId: string | null | undefined, handleId: string) {
+  return edgeHandleId === handleId
+    || edgeHandleId === `${handleId}-src`
+    || edgeHandleId === `${handleId}-tgt`;
+}
+
+function isEdgeUsingCustomHandle(edge: Edge, nodeId: string, handleId: string) {
+  return (edge.source === nodeId && isLegacyCustomHandleMatch(edge.sourceHandle, handleId))
+    || (edge.target === nodeId && isLegacyCustomHandleMatch(edge.targetHandle, handleId));
+}
+
+function isEdgeUsingInvalidTimelineTick(edge: Edge, nodeId: string, validTickIds: Set<string>) {
+  if (edge.source === nodeId && edge.sourceHandle && !validTickIds.has(edge.sourceHandle)) return true;
+  if (edge.target === nodeId && edge.targetHandle && !validTickIds.has(edge.targetHandle)) return true;
+  return false;
+}
+
 export function useCanvasNodeCommands({
   selectedNodes,
   setNodes,
@@ -74,7 +91,7 @@ export function useCanvasNodeCommands({
     if (timelineData?.ticks) {
       const validTickIds = new Set(timelineData.ticks.map((tick) => tick.id));
       setEdges((currentEdges) =>
-        currentEdges.filter((edge) => edge.source !== id || !edge.sourceHandle || validTickIds.has(edge.sourceHandle)),
+        currentEdges.filter((edge) => !isEdgeUsingInvalidTimelineTick(edge, id, validTickIds)),
       );
       return;
     }
@@ -85,7 +102,7 @@ export function useCanvasNodeCommands({
       if (!Array.isArray(parsed.ticks)) return;
       const validTickIds = new Set(parsed.ticks.map((tick) => tick.id));
       setEdges((currentEdges) =>
-        currentEdges.filter((edge) => edge.source !== id || !edge.sourceHandle || validTickIds.has(edge.sourceHandle)),
+        currentEdges.filter((edge) => !isEdgeUsingInvalidTimelineTick(edge, id, validTickIds)),
       );
     } catch {}
   }, [setEdges, setNodes]);
@@ -173,10 +190,7 @@ export function useCanvasNodeCommands({
 
     setEdges((currentEdges) =>
       currentEdges.filter((edge) =>
-        !(
-          (edge.source === nodeId && edge.sourceHandle?.startsWith(`${handleId}-`)) ||
-          (edge.target === nodeId && edge.targetHandle?.startsWith(`${handleId}-`))
-        ),
+        !isEdgeUsingCustomHandle(edge, nodeId, handleId),
       ),
     );
   }, [setEdges, setNodes]);

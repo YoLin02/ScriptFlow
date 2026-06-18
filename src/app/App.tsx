@@ -17,6 +17,10 @@ import { dbGet, dbSet, removeLegacyLocalStorageKeys } from '../shared/storage/db
 const STORAGE_KEY = 'visual_text_flow_state';
 const MAX_HISTORY_ENTRIES = 50;
 const EMPTY_DOCUMENT_HTML = '<h1>开始书写</h1><p>在此输入草稿，或从段落切片管理器将内容转化为卡片节点。</p>';
+const MIN_EDITOR_WIDTH = 320;
+const DEFAULT_EDITOR_WIDTH = 480;
+const OUTLINE_EDITOR_WIDTH = 732;
+const MIN_CANVAS_WIDTH = 360;
 
 interface HistoryAvailability {
   canUndo: boolean;
@@ -38,6 +42,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'editor' | 'canvas' | 'split'>('split');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isEditorOutlineOpen, setIsEditorOutlineOpen] = useState(false);
+  const [editorWidth, setEditorWidth] = useState(DEFAULT_EDITOR_WIDTH);
+  const [isEditorResizing, setIsEditorResizing] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -60,6 +66,12 @@ export default function App() {
   const lastHistorySignatureRef = useRef('');
   const didSeedHistoryRef = useRef(false);
   const isRestoringHistoryRef = useRef(false);
+
+  const clampEditorWidth = useCallback((width: number) => {
+    if (typeof window === 'undefined') return Math.max(MIN_EDITOR_WIDTH, width);
+    const maxWidth = Math.max(MIN_EDITOR_WIDTH, Math.min(window.innerWidth * 0.72, window.innerWidth - MIN_CANVAS_WIDTH));
+    return Math.round(Math.min(Math.max(width, MIN_EDITOR_WIDTH), maxWidth));
+  }, []);
 
   const createWorkspaceSnapshot = useCallback((): WorkspaceSaveState => {
     const serializedNodes = nodes.filter(n => n && n.data).map((n) => ({
@@ -159,6 +171,41 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(SHORTCUT_STORAGE_KEY, JSON.stringify(shortcuts));
   }, [shortcuts]);
+
+  useEffect(() => {
+    if (!isEditorOutlineOpen) return;
+    setEditorWidth((currentWidth) => clampEditorWidth(Math.max(currentWidth, OUTLINE_EDITOR_WIDTH)));
+  }, [clampEditorWidth, isEditorOutlineOpen]);
+
+  useEffect(() => {
+    const handleResize = () => setEditorWidth((currentWidth) => clampEditorWidth(currentWidth));
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [clampEditorWidth]);
+
+  useEffect(() => {
+    if (!isEditorResizing) return;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handlePointerMove = (event: PointerEvent) => {
+      event.preventDefault();
+      setEditorWidth(clampEditorWidth(event.clientX));
+    };
+    const handlePointerUp = () => setIsEditorResizing(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [clampEditorWidth, isEditorResizing]);
 
   // Local Database Save Sync Effect with Debounce to prevent lag during dragging or typing
   useEffect(() => {
@@ -286,7 +333,7 @@ export default function App() {
     setMainDocHtml(newHtml);
   }, []);
 
-  const splitEditorWidth = isEditorOutlineOpen ? 'min(732px, 72vw)' : 'min(480px, 42vw)';
+  const splitEditorWidth = `${clampEditorWidth(editorWidth)}px`;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-50 font-sans">
@@ -317,6 +364,18 @@ export default function App() {
               shortcuts={shortcuts}
             />
           </div>
+          {!isSidebarCollapsed && activeTab === 'split' && (
+            <div
+              className="absolute right-[-3px] top-0 z-20 hidden h-full w-1.5 cursor-col-resize touch-none bg-transparent transition-colors hover:bg-neutral-300/60 md:block"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                setIsEditorResizing(true);
+              }}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="调整脚本编辑区宽度"
+            />
+          )}
         </div>
 
         {/* Sidebar expand collapse trigger button - placed OUTSIDE the column to transition beautifully */}

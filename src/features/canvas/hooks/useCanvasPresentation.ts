@@ -46,10 +46,13 @@ export function useCanvasPresentation(nodes: WorkspaceNode[], edges: Edge[]) {
     return edges.map((edge) => {
       const isSourceConnected = connectedNodeIds.has(edge.source);
       const isTargetConnected = connectedNodeIds.has(edge.target);
+      const isActiveTickEdge = !!activeTickDetails
+        && (
+          (edge.source === activeTickDetails.nodeId && edge.sourceHandle === activeTickDetails.tickId)
+          || (edge.target === activeTickDetails.nodeId && edge.targetHandle === activeTickDetails.tickId)
+        );
       const isLinkActive = activeTickDetails
-        ? edge.source === activeTickDetails.nodeId
-          ? edge.sourceHandle === activeTickDetails.tickId
-          : isSourceConnected && isTargetConnected
+        ? isActiveTickEdge || (isSourceConnected && isTargetConnected)
         : isSourceConnected && isTargetConnected;
 
       return {

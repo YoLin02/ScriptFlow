@@ -58,16 +58,10 @@ export function useCanvasMediaLibrary({
           }
           return [asset, ...currentAssets];
         });
-
-        const newNode = createImageNodeFromAsset(asset, {
-          x: 100 + Math.random() * 250,
-          y: 100 + Math.random() * 250,
-        });
-        setNodes((currentNodes) => [...currentNodes, newNode]);
       };
       reader.readAsDataURL(file);
     });
-  }, [setNodes]);
+  }, []);
 
   const insertAsset = useCallback((asset: CanvasMediaAsset) => {
     setNodes((currentNodes) => {

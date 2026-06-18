@@ -9,6 +9,8 @@ import type { TextCanvasNodeData } from '../../../types';
 const DEFAULT_TEXT_NODE_WIDTH = 280;
 const TEXT_NODE_MIN_HEIGHT = 120;
 const TEXT_NODE_VERTICAL_CHROME = 106;
+const TEXT_NODE_BODY_HORIZONTAL_PADDING = 32;
+const TEXT_NODE_DISPLAY_VERTICAL_CHROME = 104;
 
 export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCanvasNodeData; selected?: boolean }) => {
   const { onDeleteNode, onUpdateContent, editingId, setEditingId } = useContext(NodeActionContext);
@@ -33,8 +35,36 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
     return Math.max(TEXT_NODE_MIN_HEIGHT, textarea.scrollHeight + TEXT_NODE_VERTICAL_CHROME);
   };
 
+  const measureDisplayHeight = (text: string) => {
+    if (typeof document === 'undefined') return measureDraftHeight();
+    const nodeWidth = nodeRef.current?.getBoundingClientRect().width || data.width || DEFAULT_TEXT_NODE_WIDTH;
+    const measureEl = document.createElement('div');
+    measureEl.textContent = text || '空白文本卡片... 双击进行编辑';
+    Object.assign(measureEl.style, {
+      position: 'fixed',
+      left: '-9999px',
+      top: '0',
+      width: `${Math.max(80, nodeWidth - TEXT_NODE_BODY_HORIZONTAL_PADDING)}px`,
+      visibility: 'hidden',
+      whiteSpace: 'pre-wrap',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      lineHeight: '1.625',
+    });
+    document.body.appendChild(measureEl);
+    const measuredHeight = measureEl.scrollHeight;
+    measureEl.remove();
+    return Math.max(TEXT_NODE_MIN_HEIGHT, measuredHeight + TEXT_NODE_DISPLAY_VERTICAL_CHROME);
+  };
+
   const persistContent = () => {
-    const nextHeight = Math.max(draftHeight || measureDraftHeight(), data.height || TEXT_NODE_MIN_HEIGHT);
+    const nextHeight = Math.max(
+      draftHeight || measureDraftHeight(),
+      measureDisplayHeight(editorVal),
+      data.height || TEXT_NODE_MIN_HEIGHT,
+    );
     onUpdateContent?.(id, editorVal, titleVal, undefined, undefined, {
       width: data.width || DEFAULT_TEXT_NODE_WIDTH,
       height: nextHeight,
@@ -176,7 +206,7 @@ export const TextNode = memo(({ id, data, selected }: { id: string; data: TextCa
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <p className="w-full overflow-visible break-words text-xs font-sans text-neutral-600 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] select-text">
+          <p className="h-full min-h-0 w-full overflow-y-auto break-words text-xs font-sans leading-relaxed text-neutral-600 whitespace-pre-wrap [overflow-wrap:anywhere] select-text">
             {data.content || <span className="text-neutral-400 italic">空白文本卡片... 双击进行编辑</span>}
           </p>
         )}

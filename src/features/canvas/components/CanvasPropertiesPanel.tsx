@@ -88,7 +88,8 @@ function EdgePropertiesPanel({
   onUpdateEdge: (edgeId: string, patch: Partial<Edge>) => void;
 }) {
   const edgeColor = typeof selectedEdge.style?.stroke === 'string' ? selectedEdge.style.stroke : '#737373';
-  const isDashed = typeof selectedEdge.style?.strokeDasharray === 'string' && selectedEdge.style.strokeDasharray.length > 0;
+  const isDashed = selectedEdge.animated === true
+    || (typeof selectedEdge.style?.strokeDasharray === 'string' && selectedEdge.style.strokeDasharray.length > 0);
   const edgeRouteType = selectedEdge.type === 'step' ? 'step' : 'default';
 
   return (
