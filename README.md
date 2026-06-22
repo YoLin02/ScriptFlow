@@ -1,9 +1,19 @@
 # ScriptFlow
 
-面向编导、写作者和内容策划的可视化脚本 / 文本结构化画布工具。
+一个面向编导、短视频创作者、写作者的可视化脚本工作台。
 
-在线体验：https://flow.yolin02.top/
-当前状态：Production Beta / 单人本地版
+把长文本脚本拆成卡片，在画布中自由拖拽、连线、批注、整理素材，
+让脚本从「一大段文字」变成「可视化的内容结构」。
+
+在线体验：flow.yolin02.top
+
+适合：
+- 短视频脚本拆解
+- 影视解说文案结构整理
+- 内容策划脑图
+- 文案段落切片
+- 图片素材与脚本文字对应
+- 编导替代 Excel / Word 做脚本排版
 
 <img width="2152" height="1383" alt="image" src="https://github.com/user-attachments/assets/f3ee50ec-0678-49cf-9fdd-93943eb9e3a6" />
 
