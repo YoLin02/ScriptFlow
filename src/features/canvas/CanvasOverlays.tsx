@@ -44,6 +44,7 @@ interface CanvasOverlaysProps {
     onUpdateNodes: (nodeIds: string[], patch: Partial<CanvasNodeData>) => void;
     onResizeNodes: (nodeIds: string[], width?: number, height?: number) => void;
     onUpdateEdge: (edgeId: string, patch: Partial<Edge>) => void;
+    onSaveSelectionAsTemplate?: () => void;
   };
   contextMenu: {
     state: CanvasContextMenuState | null;
@@ -134,6 +135,7 @@ export default function CanvasOverlays({
           onUpdateNodes={properties.onUpdateNodes}
           onResizeNodes={properties.onResizeNodes}
           onUpdateEdge={properties.onUpdateEdge}
+          onSaveSelectionAsTemplate={properties.onSaveSelectionAsTemplate}
         />
       )}
 
