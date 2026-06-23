@@ -14,8 +14,11 @@ export interface NodeActionContextProps {
   ) => void;
   onAddCustomHandle?: (nodeId: string, handle: CanvasNodeHandleData) => void;
   onDeleteCustomHandle?: (nodeId: string, handleId: string) => void;
+  onExitTimelineFocus?: (nodeId: string, keepSelected?: boolean) => void;
+  timelineFocusDisabledIds?: Set<string>;
   editingId?: string | null;
   setEditingId?: (id: string | null) => void;
+  selectedNodeCount?: number;
   shortcuts?: ShortcutMap;
 }
 

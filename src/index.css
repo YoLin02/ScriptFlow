@@ -32,6 +32,14 @@
   background: #b5b5b5;
 }
 
+.timeline-manager-tick-list {
+  scrollbar-width: none;
+}
+
+.timeline-manager-tick-list::-webkit-scrollbar {
+  display: none;
+}
+
 /* TipTap Editor Styles */
 .ProseMirror {
   outline: none;

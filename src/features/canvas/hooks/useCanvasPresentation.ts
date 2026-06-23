@@ -3,19 +3,32 @@ import type { Edge } from '@xyflow/react';
 import type { WorkspaceNode } from '../../../types';
 import { getActiveTickDetails, getConnectedNodeIds } from '../utils/presentationUtils';
 
-export function useCanvasPresentation(nodes: WorkspaceNode[], edges: Edge[]) {
+export function useCanvasPresentation(
+  nodes: WorkspaceNode[],
+  edges: Edge[],
+  timelineFocusDisabledIds: Set<string>,
+) {
   const activeTimelineNode = useMemo(
-    () => nodes.find((node) => node.type === 'timeline' && node.selected),
-    [nodes],
+    () => nodes.find((node) => (
+      node.type === 'timeline'
+      && node.selected
+      && !timelineFocusDisabledIds.has(node.id)
+    )),
+    [nodes, timelineFocusDisabledIds],
   );
 
   const selectedNodes = useMemo(() => nodes.filter((node) => node.selected), [nodes]);
   const selectedNodesForProperties = useMemo(
-    () => selectedNodes.some((node) => node.type === 'timeline') ? [] : selectedNodes,
-    [selectedNodes],
+    () => selectedNodes.some((node) => node.type === 'timeline' && !timelineFocusDisabledIds.has(node.id))
+      ? []
+      : selectedNodes,
+    [selectedNodes, timelineFocusDisabledIds],
   );
 
-  const activeTickDetails = useMemo(() => getActiveTickDetails(nodes), [nodes]);
+  const activeTickDetails = useMemo(
+    () => getActiveTickDetails(nodes, timelineFocusDisabledIds),
+    [nodes, timelineFocusDisabledIds],
+  );
   const isFilterActive = !!(activeTimelineNode || activeTickDetails);
 
   const connectedNodeIds = useMemo(

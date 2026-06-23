@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import type { Edge } from '@xyflow/react';
 import { NodeActionContext } from './nodes';
@@ -47,10 +47,11 @@ export default function FlowCanvas({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
   const [isTemplatePanelOpen, setIsTemplatePanelOpen] = useState(false);
+  const [timelineFocusDisabledIds, setTimelineFocusDisabledIds] = useState<Set<string>>(() => new Set());
 
   const pointerPan = useCanvasPointerPan();
   const edgeCommands = useCanvasEdgeCommands({ setEdges });
-  const presentation = useCanvasPresentation(nodes, edges);
+  const presentation = useCanvasPresentation(nodes, edges, timelineFocusDisabledIds);
   const contextMenu = useCanvasContextMenu({
     screenToFlowPosition,
     setEditingId,
@@ -202,21 +203,84 @@ export default function FlowCanvas({
     onCloseTransientUi: closeTransientUi,
   });
 
+  useEffect(() => {
+    setTimelineFocusDisabledIds((currentIds) => {
+      if (currentIds.size === 0) return currentIds;
+
+      const selectedTimelineIds = new Set(
+        nodes
+          .filter((node) => node.type === 'timeline' && node.selected)
+          .map((node) => node.id),
+      );
+      const nextIds = new Set([...currentIds].filter((id) => selectedTimelineIds.has(id)));
+      return nextIds.size === currentIds.size ? currentIds : nextIds;
+    });
+  }, [nodes]);
+
+  const exitTimelineFocus = useCallback((nodeId: string, keepSelected = true) => {
+    setEditingId(null);
+    setTimelineFocusDisabledIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (keepSelected) {
+        nextIds.add(nodeId);
+      } else {
+        nextIds.delete(nodeId);
+      }
+      return nextIds;
+    });
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== nodeId || node.data.type !== 'timeline') return node;
+        let nextContent = node.data.content;
+        if (!node.data.timelineData && node.data.content?.trim().startsWith('{')) {
+          try {
+            nextContent = JSON.stringify({
+              ...JSON.parse(node.data.content),
+              activeTickId: null,
+            });
+          } catch {
+            nextContent = node.data.content;
+          }
+        }
+        return {
+          ...node,
+          selected: keepSelected ? node.selected : false,
+          data: {
+            ...node.data,
+            content: nextContent,
+            timelineData: node.data.timelineData
+              ? {
+                  ...node.data.timelineData,
+                  activeTickId: null,
+                }
+              : node.data.timelineData,
+          },
+        };
+      }),
+    );
+  }, [setNodes]);
+
   const nodeActionContextValue = useMemo(() => ({
     onDeleteNode: nodeCommands.deleteNode,
     onUpdateContent: nodeCommands.updateContent,
     onAddCustomHandle: nodeCommands.addCustomHandle,
     onDeleteCustomHandle: nodeCommands.deleteCustomHandle,
+    onExitTimelineFocus: exitTimelineFocus,
+    timelineFocusDisabledIds,
     editingId,
     setEditingId,
+    selectedNodeCount: presentation.selectedNodes.length,
     shortcuts,
   }), [
     editingId,
+    exitTimelineFocus,
     nodeCommands.addCustomHandle,
     nodeCommands.deleteCustomHandle,
     nodeCommands.deleteNode,
     nodeCommands.updateContent,
+    presentation.selectedNodes.length,
     shortcuts,
+    timelineFocusDisabledIds,
   ]);
 
   const viewportHandlers: ViewportHandlers = {

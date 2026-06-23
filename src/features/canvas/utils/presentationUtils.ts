@@ -1,9 +1,10 @@
 import type { Edge } from '@xyflow/react';
 import type { TimelineTrackDataValue, WorkspaceNode } from '../../../types';
 
-export function getActiveTickDetails(nodes: WorkspaceNode[]) {
+export function getActiveTickDetails(nodes: WorkspaceNode[], timelineFocusDisabledIds: Set<string>) {
   for (const node of nodes) {
     if (node.type !== 'timeline') continue;
+    if (timelineFocusDisabledIds.has(node.id)) continue;
 
     const timelineData = (node.data as { timelineData?: TimelineTrackDataValue }).timelineData;
     if (timelineData?.activeTickId) {
