@@ -202,20 +202,58 @@ export default function FlowCanvas({
     onCloseTransientUi: closeTransientUi,
   });
 
+  const exitTimelineFocus = useCallback((nodeId: string) => {
+    setEditingId(null);
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.id !== nodeId || node.data.type !== 'timeline') return node;
+        let nextContent = node.data.content;
+        if (!node.data.timelineData && node.data.content?.trim().startsWith('{')) {
+          try {
+            nextContent = JSON.stringify({
+              ...JSON.parse(node.data.content),
+              activeTickId: null,
+            });
+          } catch {
+            nextContent = node.data.content;
+          }
+        }
+        return {
+          ...node,
+          selected: false,
+          data: {
+            ...node.data,
+            content: nextContent,
+            timelineData: node.data.timelineData
+              ? {
+                  ...node.data.timelineData,
+                  activeTickId: null,
+                }
+              : node.data.timelineData,
+          },
+        };
+      }),
+    );
+  }, [setNodes]);
+
   const nodeActionContextValue = useMemo(() => ({
     onDeleteNode: nodeCommands.deleteNode,
     onUpdateContent: nodeCommands.updateContent,
     onAddCustomHandle: nodeCommands.addCustomHandle,
     onDeleteCustomHandle: nodeCommands.deleteCustomHandle,
+    onExitTimelineFocus: exitTimelineFocus,
     editingId,
     setEditingId,
+    selectedNodeCount: presentation.selectedNodes.length,
     shortcuts,
   }), [
     editingId,
+    exitTimelineFocus,
     nodeCommands.addCustomHandle,
     nodeCommands.deleteCustomHandle,
     nodeCommands.deleteNode,
     nodeCommands.updateContent,
+    presentation.selectedNodes.length,
     shortcuts,
   ]);
 

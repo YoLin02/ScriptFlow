@@ -1,7 +1,7 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
-import { Clock, Plus, X } from 'lucide-react';
+import { Clock, EyeOff, Plus, X } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import type { TimelineCanvasNodeData, TimelineTrackDataValue } from '../../../types';
 import { eventToShortcut, isShortcutEvent, normalizeShortcut } from '../../shortcuts';
@@ -100,7 +100,7 @@ function getTimelineDataFromNode(data: TimelineCanvasNodeData): TimelineTrackDat
 }
 
 export const TimelineNode = memo(({ id, data, selected }: { id: string; data: TimelineCanvasNodeData; selected?: boolean }) => {
-  const { onDeleteNode, onUpdateContent, shortcuts } = useContext(NodeActionContext);
+  const { onDeleteNode, onUpdateContent, onExitTimelineFocus, selectedNodeCount = 0, shortcuts } = useContext(NodeActionContext);
   const updateNodeInternals = useUpdateNodeInternals();
   const [state, setState] = useState<TimelineTrackDataValue>(() => getTimelineDataFromNode(data));
   const [isTimelineAddMode, setIsTimelineAddMode] = useState(false);
@@ -302,14 +302,30 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           </span>
           <span>轨道管理器</span>
         </span>
-        <button
-          onClick={onDelete}
-          className="h-8 cursor-pointer px-1 text-[12px] font-bold text-red-600 transition-colors hover:text-red-700"
-          data-tooltip="删除轨道"
-          data-tooltip-placement="bottom"
-        >
-          删除
-        </button>
+        <div className="flex items-center gap-1.5">
+          {selectedNodeCount > 1 && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onExitTimelineFocus?.(id);
+              }}
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
+              data-tooltip="取消轨道遮罩并返回批量属性"
+              data-tooltip-placement="bottom"
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+              退出聚焦
+            </button>
+          )}
+          <button
+            onClick={onDelete}
+            className="h-8 cursor-pointer px-1 text-[12px] font-bold text-red-600 transition-colors hover:text-red-700"
+            data-tooltip="删除轨道"
+            data-tooltip-placement="bottom"
+          >
+            删除
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-neutral-100 bg-neutral-50/60 p-1.5">
