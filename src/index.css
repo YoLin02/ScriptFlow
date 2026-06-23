@@ -192,12 +192,12 @@
   border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
   cursor: crosshair !important;
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .react-flow__handle:hover {
-  transform: scale(1.22);
   background-color: #000000 !important;
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.12), 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .react-flow__handle.custom-node-handle {
@@ -209,8 +209,8 @@
 }
 
 .react-flow__handle.custom-node-handle:hover {
-  transform: scale(1.3);
   background-color: #111827 !important;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12), 0 1px 4px rgba(0, 0, 0, 0.14);
 }
 
 .react-flow__connection-path {
