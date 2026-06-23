@@ -1,7 +1,7 @@
 import React, { memo, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
-import { Clock, EyeOff, Plus, X } from 'lucide-react';
+import { Clock, EyeOff, MousePointer2, Plus, X } from 'lucide-react';
 import { NodeActionContext } from './NodeActionContext';
 import type { TimelineCanvasNodeData, TimelineTrackDataValue } from '../../../types';
 import { eventToShortcut, isShortcutEvent, normalizeShortcut } from '../../shortcuts';
@@ -100,10 +100,18 @@ function getTimelineDataFromNode(data: TimelineCanvasNodeData): TimelineTrackDat
 }
 
 export const TimelineNode = memo(({ id, data, selected }: { id: string; data: TimelineCanvasNodeData; selected?: boolean }) => {
-  const { onDeleteNode, onUpdateContent, onExitTimelineFocus, selectedNodeCount = 0, shortcuts } = useContext(NodeActionContext);
+  const {
+    onDeleteNode,
+    onUpdateContent,
+    onExitTimelineFocus,
+    timelineFocusDisabledIds,
+    selectedNodeCount = 0,
+    shortcuts,
+  } = useContext(NodeActionContext);
   const updateNodeInternals = useUpdateNodeInternals();
   const [state, setState] = useState<TimelineTrackDataValue>(() => getTimelineDataFromNode(data));
   const [isTimelineAddMode, setIsTimelineAddMode] = useState(false);
+  const isFocusDisabled = timelineFocusDisabledIds?.has(id) ?? false;
 
   // Keep a ref of the current state so drag-and-resize events can access it safely without stale closures
   const stateRef = useRef(state);
@@ -307,14 +315,28 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
             <button
               onClick={(event) => {
                 event.stopPropagation();
-                onExitTimelineFocus?.(id);
+                onExitTimelineFocus?.(id, true);
               }}
               className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
-              data-tooltip="取消轨道遮罩并返回批量属性"
+              data-tooltip="隐藏轨道管理器，保留轨道批量选中"
               data-tooltip-placement="bottom"
             >
               <EyeOff className="h-3.5 w-3.5" />
               退出聚焦
+            </button>
+          )}
+          {selectedNodeCount > 1 && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onExitTimelineFocus?.(id, false);
+              }}
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
+              data-tooltip="取消选中轨道，仅保留其他批量节点"
+              data-tooltip-placement="bottom"
+            >
+              <MousePointer2 className="h-3.5 w-3.5" />
+              移出批量
             </button>
           )}
           <button
@@ -544,7 +566,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
         </div>
       </div>
 
-      {selected && createPortal(
+      {selected && !isFocusDisabled && createPortal(
         <div
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
