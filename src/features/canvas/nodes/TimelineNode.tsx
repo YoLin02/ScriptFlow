@@ -311,34 +311,6 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           <span>轨道管理器</span>
         </span>
         <div className="flex items-center gap-1.5">
-          {selectedNodeCount > 1 && (
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                onExitTimelineFocus?.(id, true);
-              }}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
-              data-tooltip="隐藏轨道管理器，保留轨道批量选中"
-              data-tooltip-placement="bottom"
-            >
-              <EyeOff className="h-3.5 w-3.5" />
-              退出聚焦
-            </button>
-          )}
-          {selectedNodeCount > 1 && (
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                onExitTimelineFocus?.(id, false);
-              }}
-              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-[11px] font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-950"
-              data-tooltip="取消选中轨道，仅保留其他批量节点"
-              data-tooltip-placement="bottom"
-            >
-              <MousePointer2 className="h-3.5 w-3.5" />
-              移出批量
-            </button>
-          )}
           <button
             onClick={onDelete}
             className="h-8 cursor-pointer px-1 text-[12px] font-bold text-red-600 transition-colors hover:text-red-700"
@@ -375,10 +347,8 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
       </div>
 
       <div
-        className="space-y-1 overflow-y-auto overflow-x-hidden pr-0.5"
-        style={{
-          maxHeight: `${Math.min(state.ticks.length, 6) * 36 + Math.max(0, Math.min(state.ticks.length, 6) - 1) * 4}px`,
-        }}
+        className={`timeline-manager-tick-list space-y-1 overflow-x-hidden pr-0.5 ${state.ticks.length > 6 ? 'overflow-y-auto' : 'overflow-y-visible'}`}
+        style={state.ticks.length > 6 ? { maxHeight: '272px' } : undefined}
       >
         {state.ticks.map((tick, index) => {
           const hours = Math.floor(tick.seconds / 3600);
@@ -459,7 +429,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
         })}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 px-1 pt-2">
         <button
           onClick={addTickInLargestGap}
           className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-neutral-950 px-3 text-[11px] font-bold text-white shadow-xs transition-all hover:bg-neutral-800"
@@ -467,6 +437,34 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           <Plus className="h-3.5 w-3.5" />
           <span>添加时刻</span>
         </button>
+        {selectedNodeCount > 1 && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onExitTimelineFocus?.(id, true);
+              }}
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 bg-white px-2.5 text-[11px] font-bold text-neutral-600 shadow-xs transition-colors hover:bg-neutral-50 hover:text-neutral-950"
+              data-tooltip="保留轨道"
+              data-tooltip-placement="top"
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+              退出聚焦
+            </button>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onExitTimelineFocus?.(id, false);
+              }}
+              className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 bg-white px-2.5 text-[11px] font-bold text-neutral-600 shadow-xs transition-colors hover:bg-neutral-50 hover:text-neutral-950"
+              data-tooltip="移出轨道"
+              data-tooltip-placement="top"
+            >
+              <MousePointer2 className="h-3.5 w-3.5" />
+              移出批量
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
@@ -571,7 +569,7 @@ export const TimelineNode = memo(({ id, data, selected }: { id: string; data: Ti
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          className="fixed right-4 top-24 z-[9000] flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2.5 overflow-x-hidden rounded-2xl border border-neutral-200/80 bg-white/95 p-2.5 text-left shadow-2xl shadow-neutral-900/10 backdrop-blur-md animate-in fade-in slide-in-from-right-2 duration-150"
+          className="fixed right-4 top-24 z-[9000] flex w-[320px] max-w-[calc(100vw-2rem)] flex-col gap-2.5 rounded-2xl border border-neutral-200/80 bg-white/95 p-2.5 text-left shadow-2xl shadow-neutral-900/10 backdrop-blur-md animate-in fade-in slide-in-from-right-2 duration-150"
         >
           {managerContent}
         </div>,
