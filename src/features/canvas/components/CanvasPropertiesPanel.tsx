@@ -1,5 +1,5 @@
 import { Edge, MarkerType } from '@xyflow/react';
-import { AlignCenter, AlignLeft, AlignRight, CornerDownRight, Link2, MousePointer2, Route, SquareDashedMousePointer, Upload } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Boxes, CornerDownRight, Link2, MousePointer2, Route, SquareDashedMousePointer, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { TableCellSelection, TableNodeDataValue, TableTextAlign, WorkspaceNode } from '../../../types';
@@ -11,6 +11,7 @@ interface CanvasPropertiesPanelProps {
   onUpdateNodes: (nodeIds: string[], patch: Partial<WorkspaceNode['data']>) => void;
   onResizeNodes: (nodeIds: string[], width?: number, height?: number) => void;
   onUpdateEdge: (edgeId: string, patch: Partial<Edge>) => void;
+  onSaveSelectionAsTemplate?: () => void;
 }
 
 const STATUS_OPTIONS = ['', '草稿', '待补充', '已确认', '重点', '废弃'];
@@ -41,6 +42,7 @@ export default function CanvasPropertiesPanel({
   onUpdateNodes,
   onResizeNodes,
   onUpdateEdge,
+  onSaveSelectionAsTemplate,
 }: CanvasPropertiesPanelProps) {
   if (selectedNodes.length === 0 && !selectedEdge) return null;
 
@@ -71,12 +73,42 @@ export default function CanvasPropertiesPanel({
         onUpdateNodes={onUpdateNodes}
       />
 
+      {!isSingle && onSaveSelectionAsTemplate && (
+        <BatchTemplateAction
+          selectedCount={selectedNodes.length}
+          onSaveSelectionAsTemplate={onSaveSelectionAsTemplate}
+        />
+      )}
+
       {isSingle && firstNode.type !== 'timeline' && (
         <SpecificFieldsShell key={firstNode.type || firstNode.data.type}>
           <NodeSpecificFields node={firstNode} nodeIds={nodeIds} onUpdateNodes={onUpdateNodes} />
         </SpecificFieldsShell>
       )}
     </PanelShell>
+  );
+}
+
+function BatchTemplateAction({
+  selectedCount,
+  onSaveSelectionAsTemplate,
+}: {
+  selectedCount: number;
+  onSaveSelectionAsTemplate: () => void;
+}) {
+  return (
+    <section className="border-t border-neutral-100 pt-2">
+      <button
+        type="button"
+        onClick={onSaveSelectionAsTemplate}
+        className="flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-neutral-200 bg-white text-xs font-semibold text-neutral-800 shadow-xs transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+        data-tooltip={`保存当前 ${selectedCount} 个节点为模板`}
+        data-tooltip-placement="bottom"
+      >
+        <Boxes className="h-3.5 w-3.5 text-neutral-500" />
+        保存为节点模板
+      </button>
+    </section>
   );
 }
 

@@ -385,6 +385,7 @@ export default function FlowCanvas({
             onUpdateNodes: nodeCommands.updateNodesFromPanel,
             onResizeNodes: nodeCommands.resizeNodesFromPanel,
             onUpdateEdge: edgeCommands.updateEdgeFromPanel,
+            onSaveSelectionAsTemplate: templates.saveSelectionAsTemplate,
           }}
           contextMenu={{
             state: contextMenu.contextMenu,
